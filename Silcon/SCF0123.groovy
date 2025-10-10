@@ -72,8 +72,7 @@ public class SCF0123 extends sam.swing.ScriptBase {
         pnlTipoDoc.setBounds(2, 3, 470, 89) // Altera a posição do painel de tipo de documento
         pnlRP.setVisible(false) // Inativa painel R/P
         rdoReceber.setEnabled(false) // Inativa os componentes de R/P
-        btlAbe01.setVisible(false);
-        btlAah01.setVisible(false);
+
 
         for(ActionListener event : btnMostrar.getActionListeners()){ // Retira os eventos defaut do botão
             btnMostrar.removeActionListener(event);
@@ -130,10 +129,10 @@ public class SCF0123 extends sam.swing.ScriptBase {
 
         // Check Controller Recebimento
         chkRecebimento.setName("chkRecebimento");
-        chkRecebimento.setText("Data Recebimento");
+        chkRecebimento.setText("Data Recebimento/Pagamento");
         chkRecebimento.setControladorDePanel(true);
         chkRecebimento.setFont(new Font("Arial", 1, 13));
-        chkRecebimento.setBounds(7,1,150, (int)(chkRecebimento.getPreferredSize()).height);
+        chkRecebimento.setBounds(7,1,230, (int)(chkRecebimento.getPreferredSize()).height);
         pnlDtRecebimento.add(chkRecebimento);
 
         // Combo Data Recebimento
@@ -227,6 +226,8 @@ public class SCF0123 extends sam.swing.ScriptBase {
         MTextFieldLocalDate txtDataFinalVcto = getComponente("txtDataFinalVcto");
         MRadioButton rdoReal = getComponente("rdoReal");
         MRadioButton rdoPrevisao = getComponente("rdoPrevisao");
+        MButtonList btlAbe01 = getComponente("btlAbe01");
+        MButtonList btlAah01 = getComponente("btlAah01");
         MSpread sprDaa01s = getComponente("sprDaa01s");
 
         Integer valueRecebidos = rdoRecebidos.isSelected() ? 1 : 0;
@@ -254,6 +255,8 @@ public class SCF0123 extends sam.swing.ScriptBase {
         String dataFinalVcto = txtDataFinalVcto.getValue();
         Integer valueRdoReal = rdoReal.isSelected() ? 1 : 0;
         Integer valueRdoPrevisao = rdoPrevisao.isSelected() ? 1 : 0;
+        String idsAbe01 = btlAbe01.getValue().getValor1();
+        String idsAah01 = btlAah01.getValue().getValor1();
 
         try{
             sprDaa01s.clear()
@@ -286,6 +289,8 @@ public class SCF0123 extends sam.swing.ScriptBase {
                     .param("dataFinalVcto", dataFinalVcto)
                     .param("valueRdoReal", valueRdoReal)
                     .param("valueRdoPrevisao", valueRdoPrevisao)
+                    .param("idsAbe01", idsAbe01)
+                    .param("idsAah01", idsAah01)
                     .initialText("Buscando os documentos financeiros")
                     .success(response -> {
                         List<Daa01> daa01s = (List<Daa01>)response.parseResponse(new TypeReference<List<Daa01>>() {
