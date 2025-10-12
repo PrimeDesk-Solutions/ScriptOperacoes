@@ -4,6 +4,7 @@ import br.com.multitec.utils.collections.TableMap
 import multitec.swing.components.autocomplete.MNavigation
 import multitec.swing.core.MultitecRootPanel
 import sam.model.entities.aa.Aab10
+import sam.swing.tarefas.scf.SCF0150
 
 import javax.swing.JButton;
 
