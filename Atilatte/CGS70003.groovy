@@ -100,6 +100,8 @@ class Script extends sam.swing.ScriptBase {
     private AtomicBoolean pesoProcessadoNestaPesagem = new AtomicBoolean(false);
     private final BigDecimal limitePesoZero = new BigDecimal("0.050");
     private AtomicBoolean erroNotificado = new AtomicBoolean(false)
+    private ScheduledExecutorService executor;
+    private ScheduledFuture<?> future;
 
     @Override
     void execute(MultitecRootPanel panel) {
@@ -301,27 +303,13 @@ class Script extends sam.swing.ScriptBase {
             erroNotificado.set(false)
             pesagemIniciada = true;
 
-            // cria scheduler alinhado ao segundo e pool de requisições
-            scheduler = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
-                @Override
-                Thread newThread(Runnable r) {
-                    Thread t = new Thread(r, "scheduler-pesagem");
-                    t.setDaemon(true);
-                    return t;
-                }
-            })
+            executor = Executors.newSingleThreadScheduledExecutor();
 
-            requestPool = Executors.newFixedThreadPool(4, new ThreadFactory() {
-                @Override
-                Thread newThread(Runnable r) {
-                    Thread t = new Thread(r, "request-pool");
-                    t.setDaemon(true);
-                    return t;
-                }
-            })
-            long initialDelay = computeDelayToNextSecondMillis()
-            // agenda ticks a cada 1s (1000ms). O tick deve ser rápido: apenas tenta adquirir o permit e submeter ao pool.
-            scheduledTask = scheduler.scheduleAtFixedRate({ tick() }, initialDelay, 1000L, TimeUnit.MILLISECONDS)
+            Runnable tarefa = () -> {
+                SwingUtilities.invokeLater(this::iniciarTarefa());
+            };
+
+            future = executor.scheduleAtFixedRate(tarefa, 0, 1, TimeUnit.SECONDS);
 
             SwingUtilities.invokeLater(() -> {
                 btnPesagem.setText("Parar Pesagem");
@@ -329,60 +317,37 @@ class Script extends sam.swing.ScriptBase {
 
         }catch (Exception ex){
             pesagemIniciada = false;
-            shutdownExecutorsSilently();
+            pararPesagem(true)
             btnPesagem.setText("Iniciar Pesagem");
             interromper("Falha ao iniciar pesagem: " + ex.getMessage());
         }
     }
 
-    // calcula quantos ms faltam para o próximo segundo exato
-    private long computeDelayToNextSecondMillis(){
-        long milli = System.currentTimeMillis()
-        long next = ((milli / 1000L) + 1L) * 1000L
-        return next - milli
-    }
-
     // Método chamado a cada segundo pelo scheduler
-    private void tick(){
+    private void iniciarTarefa(){
         if (!pesagemIniciada) return
-
-        // tenta pegar uma vaga para enviar requisição
-        boolean permit = maxPending.tryAcquire()
-        if (!permit) {
-            // Limite atingido: pular este tick (evita acúmulo)
-            exibirAtencao("Máximo de requisições pendentes alcançado.")
-            return
-        }
 
         // formato de data/hora que sua API espera
         final String dataHora = obterLocalTime();
 
-        // envia trabalho para o pool de requisições (buscarPesoAPI é bloqueante)
-        requestPool.submit({
-            try {
-                String peso = buscarPesoAPI(dataHora)
+        try {
+            String peso = buscarPesoAPI(dataHora)
                 if (peso != null) {
                     try {
                         processarPeso(peso)
+//                        MSpread sprEtiquetas = getComponente("sprEtiquetas");
+//                        CGS7003EtiquetaDto etiquetas = new CGS7003EtiquetaDto(10.5, dataHora, peso, LocalDate.of(2025,1,1), LocalDate.of(2025, 2,1), null);
+//                        sprEtiquetas.addRow(etiquetas)
                     } catch(Exception e) {
                         // tratar exceção de processamento da etiqueta sem quebrar o pool
                         throw new RuntimeException("Erro ao processar peso: " + e.getMessage())
-                        // opcional: notificar UI
-                        SwingUtilities.invokeLater({
-                            if (erroNotificado.compareAndSet(false, true)) {
-                                exibirAtencao("Erro ao processar peso: " + e.getMessage())
-                            }
-                        })
                     }
                 }
-            } catch(Exception t){
-                // captura qualquer erro inesperado para garantir release do semaphore
-                throw new RuntimeException("Erro inesperado no requestPool: " + t)
-            } finally {
-                // garante liberar a vaga sempre
-                try { maxPending.release() } catch(Exception ignore) {}
-            }
-        } as Runnable)
+        } catch(Exception t){
+            // captura qualquer erro inesperado para garantir release do semaphore
+            throw new RuntimeException("Erro inesperado no requestPool: " + t)
+        }
+
     }
 
     private String obterLocalTime(){
@@ -608,38 +573,18 @@ class Script extends sam.swing.ScriptBase {
     private synchronized void pararPesagem(boolean exibirMensagem){
         pesagemIniciada = false;
 
-        // cancela agendador e pool com cuidado
-        if (scheduledTask != null) {
-            try {
-                scheduledTask.cancel(false); // não interrompe execução em andamento; evita efeitos colaterais
-            } catch(Exception ignore) {}
-            scheduledTask = null;
+        if (future != null) {
+            future.cancel(false); // tenta cancelar próxima execução
+            future = null;
         }
-
-        shutdownExecutorsSilently();
+        if (executor != null) {
+            executor.shutdownNow();
+            executor = null;
+        }
 
         btnPesagem.setText("Iniciar Pesagem")
 
         if(exibirMensagem) exibirInformacao("Pesagem parada.");
-    }
-
-    // encerra scheduler e pool de forma segura
-    private void shutdownExecutorsSilently(){
-        try {
-            if (scheduler != null) {
-                try { scheduler.shutdownNow() } catch(Exception ignore) {}
-                scheduler = null
-            }
-        } catch(Exception ignore) {}
-
-        try {
-            if (requestPool != null) {
-                try { requestPool.shutdownNow() } catch(Exception ignore) {}
-                requestPool = null
-            }
-        } catch(Exception ignore) {}
-
-        // garante que o semaphore não fique preso (não liberamos aqui porque cada tarefa libera quando termina).
     }
 
     // listarImpressoras, listarPortas, onClosed e demais métodos mantidos como estavam...
