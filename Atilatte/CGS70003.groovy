@@ -63,7 +63,7 @@ import java.util.concurrent.Semaphore
 import java.util.concurrent.ThreadFactory
 import sam.dto.cgs.CGS7003EtiquetaDto;
 
-class Script extends sam.swing.ScriptBase {
+class CGS7003 extends sam.swing.ScriptBase {
     private MultitecRootPanel tarefa;
     private SerialPort comPort;
     private InputStream input;
