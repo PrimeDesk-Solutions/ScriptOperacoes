@@ -67,9 +67,9 @@ public class Script extends sam.swing.ScriptBase{
         if (msgEnt != null) exibirTelaDeAtencaoComMensagemEntidade(msgEnt);
 
         // Verifica Limite de Crédito da entidade
-        TableMap tmAbe02 = buscarInformacoesLimiteCreditoEntidade(codEntidade, idEmpresa);
+        TableMap tmAbe01 = buscarInformacoesLimiteCreditoEntidade(codEntidade, idEmpresa);
 
-        if(tmAbe02.size() > 0 && tmAbe02.getTableMap("abe02json").getDate("dt_vcto_lim_credito") != null) verificarLimiteDeCredito(tmAbe02, codEntidade, idEmpresa);
+        if(tmAbe01.size() > 0 && tmAbe01.getTableMap("abe01json").getDate("dt_vcto_lim_credito") != null) verificarLimiteDeCredito(tmAbe01, codEntidade, idEmpresa);
 
         //txtCcb01obs.setValue("strTexto")
     }
@@ -187,16 +187,16 @@ public class Script extends sam.swing.ScriptBase{
     private TableMap buscarInformacoesLimiteCreditoEntidade(String codEntidade, Long idEmpresa) {
         Long idEntidade = buscarIdEntidade(codEntidade, idEmpresa);
 
-        String sql = "SELECT abe02json FROM abe02 WHERE abe02ent = " + idEntidade.toString();
+        String sql = "SELECT abe01json FROM abe01 WHERE abe01id = " + idEntidade.toString();
 
         return executarConsulta(sql)[0];
     }
 
-    private void verificarLimiteDeCredito(TableMap jsonAbe02, String codEntidade, Long idEmpresa){
+    private void verificarLimiteDeCredito(TableMap jsonAbe01, String codEntidade, Long idEmpresa){
 
-        BigDecimal vlrLimiteCredito = jsonAbe02.getTableMap("abe02json").getBigDecimal_Zero("vlr_lim_credito");
+        BigDecimal vlrLimiteCredito = jsonAbe01.getTableMap("abe01json").getBigDecimal_Zero("vlr_lim_credito");
         LocalDate dataAtual = LocalDate.now();
-        LocalDate dtVencLimCredito = jsonAbe02.getTableMap("abe02json").getDate("dt_vcto_lim_credito");
+        LocalDate dtVencLimCredito = jsonAbe01.getTableMap("abe01json").getDate("dt_vcto_lim_credito");
 
         if(vlrLimiteCredito >= 0){
             if(dtVencLimCredito < dataAtual){ // Data de vencimento de crédito menor que data atual, significa expirou

@@ -3,9 +3,6 @@
     FUNÇÃO:
 
     1- Verifica se foi inserido quantidade e unitário nos itens da pré-venda, caso não inserido, o processo é interrompido
-
-
-
  */
 package scripts
 

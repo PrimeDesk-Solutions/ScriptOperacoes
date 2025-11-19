@@ -38,7 +38,7 @@ import java.io.IOException
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter;
 
-public class Script extends sam.swing.ScriptBase{
+public class SRF1002 extends sam.swing.ScriptBase{
     def strTexto = "";
     String obs = "";
     Integer cancelou = 0;
@@ -49,7 +49,6 @@ public class Script extends sam.swing.ScriptBase{
         Long idEmpresa = obterEmpresaAtiva().getAac10id();
         MTextArea txtEaa01obsUsoInt = getComponente("txtEaa01obsUsoInt");
 
-        // Adiciona evento de perda de foco ap inserir o PCD para validação de titulos vencidos
         nvgAbd01codigo.addFocusListener(new FocusListener() {
             public void focusGained(FocusEvent e) {};
 
@@ -66,9 +65,9 @@ public class Script extends sam.swing.ScriptBase{
                     if(totalTituloVencido.getBigDecimal_Zero("totDoc") > 0) exibirCaixaDeDialogoTituloVencido(tarefa); // exibe a caixa de dialogo para observações
 
                     // Verifica Limite de Crédito da entidade
-                    TableMap tmAbe02 = buscarInformacoesLimiteCreditoEntidade(codEntidade, idEmpresa);
+                    TableMap tmAbe01 = buscarInformacoesLimiteCreditoEntidade(codEntidade, idEmpresa);
 
-                    if(tmAbe02.size() > 0 && tmAbe02.getTableMap("abe02json").getDate("dt_vcto_lim_credito") != null) verificarLimiteDeCreditoIniciar(tmAbe02, codEntidade, idEmpresa, tarefa);
+                    if(tmAbe01.size() > 0 && tmAbe01.getTableMap("abe01json").getDate("dt_vcto_lim_credito") != null) verificarLimiteDeCreditoIniciar(tmAbe01, codEntidade, idEmpresa, tarefa);
 
                     txtEaa01obsUsoInt.setValue(strTexto);
                 }
@@ -218,17 +217,17 @@ public class Script extends sam.swing.ScriptBase{
     private TableMap buscarInformacoesLimiteCreditoEntidade(String codEntidade, Long idEmpresa) {
         Long idEntidade = buscarIdEntidade(codEntidade, idEmpresa);
 
-        String sql = "SELECT abe02json FROM abe02 WHERE abe02ent = " + idEntidade.toString();
+        String sql = "SELECT abe01json FROM abe01 WHERE abe01id = " + idEntidade.toString();
 
         return executarConsulta(sql)[0];
     }
 
-    private void verificarLimiteDeCreditoIniciar(TableMap jsonAbe02, String codEntidade, Long idEmpresa, MultitecRootPanel tarefa){
+    private void verificarLimiteDeCreditoIniciar(TableMap jsonAbe01, String codEntidade, Long idEmpresa, MultitecRootPanel tarefa){
 
 
-        BigDecimal vlrLimiteCredito = jsonAbe02.getTableMap("abe02json").getBigDecimal_Zero("vlr_lim_credito");
+        BigDecimal vlrLimiteCredito = jsonAbe01.getTableMap("abe01json").getBigDecimal_Zero("vlr_lim_credito");
         LocalDate dataAtual = LocalDate.now();
-        LocalDate dtVencLimCredito = jsonAbe02.getTableMap("abe02json").getDate("dt_vcto_lim_credito");
+        LocalDate dtVencLimCredito = jsonAbe01.getTableMap("abe01json").getDate("dt_vcto_lim_credito");
         def swing = new groovy.swing.SwingBuilder();
         def lblTexto;
         def txtArea;
@@ -267,11 +266,11 @@ public class Script extends sam.swing.ScriptBase{
             }
         }
     }
-    private void verificarLimiteDeCreditoFechar(TableMap jsonAbe02, String codEntidade, Long idEmpresa){
+    private void verificarLimiteDeCreditoFechar(TableMap jsonAbe01, String codEntidade, Long idEmpresa){
 
-        BigDecimal vlrLimiteCredito = jsonAbe02.getTableMap("abe02json").getBigDecimal_Zero("vlr_lim_credito");
+        BigDecimal vlrLimiteCredito = jsonAbe01.getTableMap("abe01json").getBigDecimal_Zero("vlr_lim_credito");
         LocalDate dataAtual = LocalDate.now();
-        LocalDate dtVencLimCredito = jsonAbe02.getTableMap("abe02json").getDate("dt_vcto_lim_credito");
+        LocalDate dtVencLimCredito = jsonAbe01.getTableMap("abe01json").getDate("dt_vcto_lim_credito");
         def swing = new groovy.swing.SwingBuilder();
         def lblTexto;
         def txtArea;
@@ -355,9 +354,9 @@ public class Script extends sam.swing.ScriptBase{
         String codEntidade = nvgAbe01codigo.getValue();
 
         // Verifica Limite de Crédito da entidade
-        TableMap tmAbe02 = buscarInformacoesLimiteCreditoEntidade(codEntidade, idEmpresa);
+        TableMap tmAbe01 = buscarInformacoesLimiteCreditoEntidade(codEntidade, idEmpresa);
 
-        if(tmAbe02.size() > 0 && tmAbe02.getTableMap("abe02json").getDate("dt_vcto_lim_credito") != null) verificarLimiteDeCreditoFechar(tmAbe02, codEntidade, idEmpresa);
+        if(tmAbe01.size() > 0 && tmAbe01.getTableMap("abe01json").getDate("dt_vcto_lim_credito") != null) verificarLimiteDeCreditoFechar(tmAbe01, codEntidade, idEmpresa);
 
         txtEaa01obsUsoInt.setValue(strTexto);
     }
