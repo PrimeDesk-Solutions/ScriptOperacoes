@@ -1,3 +1,10 @@
+/*
+    TELA: SCF0101 - RECEBIMENTOS
+    FUNCÃO:
+
+    1- Cria um botão cusomizado na tela do financeiro para imprimir os boletos individualmente
+    2- Verifica se foi inserido departamento e naturezas antes de salvar o documento
+ */
 package scripts
 
 import multitec.swing.components.autocomplete.MNavigation
@@ -45,6 +52,16 @@ class SCF0101 extends sam.swing.ScriptBase {
         adicionaBotaoImprimirDoc()
     }
 
+    private void verificarDepartamentosNaturezas(){
+        MSpread sprDaa0101s = getComponente("sprDaa0101s");
+        MSpread sprDaa01011s = getComponente("sprDaa01011s");
+
+        def spreadDepartamento = sprDaa0101s.value();
+        def spreadNaturezas = sprDaa01011s.value();
+
+        if(spreadDepartamento.size() == 0 || spreadNaturezas.size() == 0 ) interromper("Não é permitido a inclusão de documentos sem departamentos ou naturezas.")
+    }
+
     private void adicionaBotaoImprimirDoc(){
         def tela = tarefa.getWindow();
         tela.setBounds((int) tela.getBounds().x, (int) tela.getBounds().y, (int) tela.getBounds().width, (int) tela.getBounds().height + 40);
@@ -61,15 +78,6 @@ class SCF0101 extends sam.swing.ScriptBase {
             }
         });
 
-    }
-    private void verificarDepartamentosNaturezas(){
-        MSpread sprDaa0101s = getComponente("sprDaa0101s");
-        MSpread sprDaa01011s = getComponente("sprDaa01011s");
-
-        def spreadDepartamento = sprDaa0101s.value();
-        def spreadNaturezas = sprDaa01011s.value();
-
-        if(spreadDepartamento.size() == 0 || spreadNaturezas.size() == 0 ) interromper("Não é permitido a inclusão de documentos sem departamentos ou naturezas.")
     }
     private void selectionButtonPressed() {
 

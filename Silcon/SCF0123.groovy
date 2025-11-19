@@ -1,3 +1,10 @@
+/*
+    TELA: SCF0123 - MANUTENÇÃO DE DOCUMENTOS
+    FUNÇÃO:
+    1- Altera o MOSTRAR para buscar os documentos já baixados para ser possível manipular documentos financeiros já baixados
+
+    Utiliza servlet: Silcon.servlets.SCF0123_Servlet
+ */
 package scripts
 
 import br.com.multitec.utils.collections.TableMap

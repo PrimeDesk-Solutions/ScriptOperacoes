@@ -1,4 +1,9 @@
-
+/*
+    TELA: SCF1001 - REMESSA PARA COBRANÇA
+    FUNÇÃO:
+    1 - Cria componente com as opções de impressoras disponíveis
+    2- Cria botão de impressão de documentos na tarefa de envio de remessa bancária para imprimir os documentos selecionados na SPREAD
+ */
 
 package scripts
 

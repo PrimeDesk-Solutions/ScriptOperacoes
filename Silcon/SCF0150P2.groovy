@@ -1,3 +1,8 @@
+/*
+    TELA: SCF0150P2 - MOVIMENTO FINANCEIRO -> IMPORTAR DOCUMENTOS
+    FUNÇÃO:
+    1- Valida as contas correntes utilizadas para cada usuário logado
+ */
 package scripts.Silcon
 
 import br.com.multitec.utils.collections.TableMap
