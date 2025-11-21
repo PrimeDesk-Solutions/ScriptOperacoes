@@ -50,11 +50,12 @@ class Script extends ScriptBase {
     private SerialPort porta;
     private InputStream input;
     private OutputStream output;
-    private String portaComm = "COM8";
+    private String portaComm = "COM3";
     private int baundRate = 9600;
     private int baundBits = 8;
     private Thread threadPesagem;
     private static final byte STX = 0x02;
+    private String impressoraDefault = "ZEBRA QUEIJO";
 
     // Variáveis de estado para controle da pesagem
     private volatile int leiturasEstaveisConsecutivas = 0;
@@ -65,13 +66,34 @@ class Script extends ScriptBase {
     private int casasDecimais = 3;
 
 
-
-
     @Override
     void execute(MultitecRootPanel panel) {
         this.tarefa = panel;
         setarCamposDefault();
         adicionarComponentesPesagem();
+        onClosed();
+
+        criarMenu("Balança", "Listar impressoras", e -> listarImpressoras(), null)
+        criarMenu("Balança", "Listar portas", e -> listarPortas(), null)
+        criarMenu("Balança", "Trazer lote", e-> setarCamposDeAcordoComACentral(), null)
+    }
+
+    private void listarPortas(){
+        SerialPort[] portas = SerialPort.getCommPorts();
+        StringBuilder portasStr = new StringBuilder();
+        for(SerialPort p : portas){
+            portasStr.append("" + p.getSystemPortName() + "\n");
+        }
+        exibirInformacao(portasStr.toString());
+    }
+
+    private void listarImpressoras(){
+        PrintService[] ps = PrintServiceLookup.lookupPrintServices(DocFlavor.SERVICE_FORMATTED.PAGEABLE, (AttributeSet)null);
+        StringBuilder impressoras = new StringBuilder();
+        for(PrintService p : ps){
+            impressoras.append("" + p.getName() + "\n");
+        }
+        exibirInformacao(impressoras.toString());
     }
     private void setarCamposDefault() {
         MNavigationController ctrAam05 = getComponente("ctrAam05")
@@ -148,9 +170,10 @@ class Script extends ScriptBase {
             porta.setNumStopBits(SerialPort.ONE_STOP_BIT);
             porta.setParity(SerialPort.NO_PARITY);
 
-            if(!porta.openPort()) throw new RuntimeException("Não foi possível abrir a porta: " + portaComm);
+            // MODIFICAÇÃO: Usar TIMEOUT_READ_SEMI_BLOCKING com timeout curto
+            porta.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 100, 0);
 
-            exibirInformacao("Porta aberta com sucesso!")
+            if(!porta.openPort()) throw new RuntimeException("Não foi possível abrir a porta: " + portaComm);
 
             // INICIALIZAR STREAMS — obrigatório!!
             input = porta.getInputStream();
@@ -162,38 +185,54 @@ class Script extends ScriptBase {
             def self = this
             threadPesagem = new Thread(() -> {
                 try{
-                    StringBuilder buffer = new StringBuilder();
                     boolean start = false; // Controla quando o STX foi recebido
+                    // Buffer para leitura em bloco
+                    byte[] buffer = new byte[128];
+                    int bytesRead;
+                    StringBuilder messageBuilder = new StringBuilder();
                     while (pesagemIniciada){
-                        if(input.available() > 0){
-                            int dado = input.read();
+                        if(Thread.currentThread().isInterrupted()){
+                            break;
+                        }
+                        try{
+                            // Ler em bloco - com SEMI_BLOCKING não lança exceção de timeout
+                            bytesRead = input.read(buffer);
 
-                            char c = (char) dado;
+                            // Verificar se temos dados válidos
+                            if (bytesRead > 0) {
+                                // Processar todos os bytes lidos
+                                for (int i = 0; i < bytesRead; i++) {
+                                    byte currentByte = buffer[i];
 
-                            // Inicio de um novo peso
-                            if(c == STX ){
-                                start = true;
-                                buffer.setLength(0) // Reinicia o buffer
-                                continue;
+                                    // Inicio de um novo peso
+                                    if(currentByte == STX ){
+                                        start = true;
+                                        messageBuilder.setLength(0) // Reinicia o buffer
+                                        continue;
+                                    }
+
+                                    if(!start) continue // Se não encontrado STX, ignora tudo
+
+                                    // Acumula os bytes dentro do buffer após o STX
+                                    messageBuilder.append((char) currentByte);
+
+                                    if(messageBuilder.length() >= 6){
+                                        String pesoStr = messageBuilder.toString().trim();
+
+                                        processarMensagemCompleta(pesoStr, self);
+                                    }
+                                }
                             }
-
-                            if(!start) continue // Se não encontrado STX, ignora tudo
-
-                            // Acumula os bytes dentro do buffer após o STX
-                            buffer.append(c);
-
-                            if(buffer.length() >= 6){
-                                String pesoStr = buffer.toString().trim();
-
-                                processarMensagemCompleta(pesoStr, self);
-                            }
+                        }catch(Exception e){
+                            // Ignora erro de leitura e continua tentando
+                            // Não exibe mensagem para não carregar a interface
                         }
 
                         // Pausa curta para não sobrecarregar a CPU
-                        Thread.sleep(10);
+                        Thread.sleep(50);
                     }
 
-                }catch(InterruptedException ei){
+                }catch(InterruptedException ie){
                     Thread.currentThread().interrupt()
                 }catch(Exception ex){
                     if(pesagemIniciada){
@@ -201,10 +240,17 @@ class Script extends ScriptBase {
                         SwingUtilities.invokeLater(() -> pararPesagem())
                     }
                 }
-            })
-            threadPesagem.start()
+            });
+            threadPesagem.setName("ThreadPesagemBalanca");
+            threadPesagem.start();
+            exibirInformacao("A pesagem foi iniciada.");
+
         }catch (Exception e){
             pesagemIniciada = false;
+            if(threadPesagem != null && threadPesagem.isAlive()){
+                threadPesagem.interrupt();
+            }
+            threadPesagem = null;
             btnPesagem.setText("Iniciar Pesagem");
             interromper("Falha ao iniciar pesagem: " + e.getMessage());
         }
@@ -227,14 +273,14 @@ class Script extends ScriptBase {
             // Formatar o peso com casas decimais
             String tempPesoFormatado;
             if (pesoNumericoStr.length() <= casasDecimais) {
-                tempPesoFormatado = "0." + pesoNumericoStr.padLeft(casasDecimais, '0');
+                tempPesoFormatado = "0." + pesoNumericoStr.padLeft(casasDecimais + 1, '0');
             } else {
                 String parteInteira = pesoNumericoStr.substring(0, pesoNumericoStr.length() - casasDecimais);
                 String parteDecimal = pesoNumericoStr.substring(pesoNumericoStr.length() - casasDecimais);
                 tempPesoFormatado = parteInteira + "." + parteDecimal;
             }
 
-            BigDecimal pesoLidoAtual = new BigDecimal(pesoNumericoStr);
+            BigDecimal pesoLidoAtual = new BigDecimal(tempPesoFormatado);
 
             // Lógica de estabilidade
             synchronized (self){
@@ -279,22 +325,160 @@ class Script extends ScriptBase {
     }
 
     private void criarEtiqueta(BigDecimal peso){
+        MNavigationController<Abm01> ctrAbm01 = getComponente("ctrAbm01") as MNavigationController<Abm01>;
+        MNavigationController<Aam05> ctrAam05 = getComponente("ctrAam05") as MNavigationController<Aam05>;
+        MNavigationController<Aah01> ctrAbb01tipo = getComponente("ctrAbb01tipo") as MNavigationController<Aah01>;
+        MNavigationController<Abe01> ctrAbb01ent = getComponente("ctrAbb01ent") as MNavigationController<Abe01>;
+        MTextFieldLocalDate txtAbm70fabric = getComponente("txtAbm70fabric") as MTextFieldLocalDate;
+        MTextFieldLocalDate txtAbm70validade = getComponente("txtAbm70validade") as MTextFieldLocalDate;
+        MTextFieldLocalDate txtAbb01data = getComponente("txtAbb01data") as MTextFieldLocalDate;
+        MTextFieldString txtAbm70serie = getComponente("txtAbm70serie") as MTextFieldString;
+        MTextFieldString txtAbm70lote = getComponente("txtAbm70lote") as MTextFieldString;
+        MTextFieldInteger txtAbb01num = getComponente("txtAbb01num") as MTextFieldInteger;
         MSpread sprEtiquetas = getComponente("sprEtiquetas");
 
+        Abm01 abm01 = ctrAbm01.getValue();
+        Long aam05id = ctrAam05.getValue().getAam05id();
+        LocalDate dataFabricacao = txtAbm70fabric.getValue();
+        LocalDate dataValidade = txtAbm70validade.getValue();
+        LocalDate dataCriacao = LocalDate.now();
+        String lote = txtAbm70lote.getValue();
+        String serie = txtAbm70serie.getValue();
+
+        String whereAbb01ent = ctrAbb01ent.getValue() == null ? "" : " AND abb01ent = " + ctrAbb01ent.getValue().getAbe01id() + " "
+        String whereAbb01tipo = ctrAbb01tipo.getValue() == null ? "" : " AND abb01tipo = " + ctrAbb01tipo.getValue().getAah01id() + " "
+        String whereAbb01num = " AND abb01num = " + txtAbb01num.getValue()
+        String whereAbb01data = " AND abb01data = '" + txtAbb01data.getValue() + "'"
+
+
+        String sqlBuscarCentral = "SELECT abb01id FROM abb01 WHERE TRUE " + whereAbb01ent + whereAbb01tipo + whereAbb01num + whereAbb01data
+        List<TableMap> abb01s = executarConsulta(sqlBuscarCentral)
+
+        Long abb01id = null
+        if(abb01s != null && abb01s.size() > 0){
+            TableMap abb01 = abb01s.get(0)
+            abb01id = abb01.getLong("abb01id")
+        }
+
         CGSGravarEtiquetaDto etiqueta = new CGSGravarEtiquetaDto(
-                null, 377311, 18174787,
-                LocalDate.now(), LocalDate.now(), LocalDate.now(),
-                peso, "1234", null, null, null
+                abb01id, abm01.abm01id, aam05id,
+                dataValidade, dataFabricacao, dataCriacao,
+                peso, lote, serie, null, null
         );
 
-        sprEtiquetas.addRow(etiqueta);
+
+        try{
+            WorkerRequest.create(this.tarefa.getWindow())
+                    .initialText("Gravando etiqueta")
+                    .dialogVisible(true)
+                    .controllerEndPoint("cgs")
+                    .methodEndPoint("gravarEtiqueta")
+                    .parseBody(etiqueta)
+                    .success((response) -> {
+                        sprEtiquetas.addRow(etiqueta);
+                        Long abm70id = response.parseResponse(new TypeReference<Long>(){});
+                        byte[] bytes = buscarDadosImpressaoEtiquetas(ctrAam05.getValue().getAam05id(), List.of(abm70id));
+                        PrintService printService = ClientUtils.escolherImpressora(impressoraDefault);
+                        ClientUtils.enviarDadosParaImpressao(bytes, printService, null, "Etiqueta");
+                    })
+                    .post();
+        }catch(Exception ex){
+            exibirAtencao("Etiqueta: " + ex.message)
+        }
     }
-    private pararPesagem(){
+    private void setarCamposDeAcordoComACentral() {
+        def txtAbb01num = getComponente("txtAbb01num");
+        def nvgAah01codigo = getComponente("nvgAah01codigo");
+        def nvgAbm01codigo = getComponente("nvgAbm01codigo");
+
+        def txtAbm70lote = getComponente("txtAbm70lote");
+        def txtAbm70serie = getComponente("txtAbm70serie");
+        def txtAbm70validade = getComponente("txtAbm70validade");
+        def txtAbm70fabric = getComponente("txtAbm70fabric");
+
+        TableMap tmDiasValidadeItem = executarConsulta("SELECT abm14validDias " +
+                " FROM abm01 " +
+                " INNER JOIN abm0101 ON abm0101item = abm01id" +
+                " INNER JOIN abm14 ON abm14id = abm0101producao" +
+                " WHERE abm01codigo = '" + nvgAbm01codigo.getValue() +
+                "' AND abm01tipo = 1")[0];
+
+        if(tmDiasValidadeItem.size() == 0) interromper("O item " + nvgAah01codigo.getValue() + " encontra-se sem dias para cálculo da date de validade no parametro de produção.");
+
+        Integer diasValid = tmDiasValidadeItem.getInteger("abm14validDias");
+
+        TableMap tm = executarConsulta("SELECT bab01lote AS lote, bab01serie AS serie, CAST(bab01dtE + INTERVAL '"+ diasValid +" days' AS DATE) AS validade, bab01ctDtI AS fabric " +
+                "FROM bab01 " +
+                "INNER JOIN abb01 ON abb01id = bab01central " +
+                "INNER JOIN aah01 ON aah01id = abb01tipo " +
+                "INNER JOIN abp20 ON abp20id = bab01comp " +
+                "INNER JOIN abm01 ON abm01id = abp20item " +
+                "WHERE abb01num = '" + txtAbb01num.getValue() + "' " +
+                "AND aah01codigo = '43' " +
+                "AND abm01codigo = '" + nvgAbm01codigo.getValue() + "' ");
+
+
+        if (tm.size() > 0) {
+            txtAbm70lote.setValue(tm.getString("lote"))
+            txtAbm70serie.setValue(tm.getString("serie"))
+            //txtAbm70validade.setValue(tm.getString("validade") != null ? LocalDate.parse(tm.getString("validade"), DateTimeFormatter.ofPattern("yyyyMMdd")) : null);
+            txtAbm70fabric.setValue(tm.getString("fabric") != null ? LocalDate.parse(tm.getString("fabric"), DateTimeFormatter.ofPattern("yyyyMMdd")) : null)
+        }
+    }
+
+    private Bab01 getProducao(){
+        MNavigationController<Bab01> ctrBab01 = getComponente("ctrBab01") as MNavigationController<Bab01>;
+        return ctrBab01.getValue();
+    }
+    private void onClosed(){
+        this.tarefa.getWindow().addWindowListener(new WindowAdapter() {
+            @Override
+            void windowClosed(WindowEvent e) {
+                super.windowClosed(e);
+                pararPesagem(false);
+            }
+
+            @Override
+            void windowClosing(WindowEvent e) {
+                super.windowClosing(e)
+                pararPesagem(false);
+            }
+        });
+    }
+
+    private byte[] buscarDadosImpressaoEtiquetas(Long aam05id, List<Long> abm70ids) {
+        CGS7050ImprimirDto dto = new CGS7050ImprimirDto(aam05id, abm70ids);
+        return HttpRequest.create()
+                .controllerEndPoint("cgs7050")
+                .methodEndPoint("buscarDadosImpressaoEtiquetas")
+                .parseBody(dto)
+                .post()
+                .getResponseBody();
+
+    }
+
+    private synchronized void pararPesagem(){
+        pararPesagem(true);
+    }
+
+    private pararPesagem(boolean exibirMensagem){
+
+        pesagemIniciada = false;
+
+        if(threadPesagem != null){
+            threadPesagem.interrupt();
+            try{
+                threadPesagem.join(1000);
+            }catch(InterruptedException e){
+                Thread.currentThread().interrupt();
+            }
+            threadPesagem = null;
+        }
+
         try{
             if(input != null) input.close();
             if(output != null) output.close();
             if(porta != null && porta.isOpen()) porta.closePort();
-
         }catch(Exception e){
             // Ignora erro ao fechar os recursos
         }finally {
@@ -305,8 +489,8 @@ class Script extends ScriptBase {
 
         resetVariaveisDePesagem();
         btnPesagem.setText("Iniciar Pesagem");
-        pesagemIniciada = false;
-        exibirInformacao("Porta fechada corretamente!")
+
+        if(exibirMensagem) exibirInformacao("Pesagem parada!")
     }
 
 
