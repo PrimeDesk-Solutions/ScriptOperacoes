@@ -145,7 +145,7 @@ public class SCF0221 extends sam.swing.ScriptBase{
         if (!rdoNaoConciliados.isSelected()) throw new ValidacaoException("Somente é permitido a gravação de registros não conciliados no repositório de dados.");
     }
     private void realizarConexaoBD(){
-        String url = "jdbc:postgresql://localhost:5432/atibainha_sam4";
+        String url = "jdbc:postgresql://192.168.1.12:5432/atibainha_sam4";
         String user = "postgres";
         String password = "postgres";
         connection = DriverManager.getConnection(url, user, password);

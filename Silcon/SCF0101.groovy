@@ -2,13 +2,14 @@
     TELA: SCF0101 - RECEBIMENTOS
     FUNCÃO:
 
-    1- Cria um botão cusomizado na tela do financeiro para imprimir os boletos individualmente
+    1- Cria um botão customizado na tela do financeiro para imprimir os boletos individualmente
     2- Verifica se foi inserido departamento e naturezas antes de salvar o documento
  */
 package scripts
 
 import multitec.swing.components.autocomplete.MNavigation
 import multitec.swing.components.textfields.MTextFieldInteger
+import multitec.swing.components.textfields.MTextFieldLocalDate
 import multitec.swing.components.textfields.MTextFieldString
 
 import java.awt.event.ActionEvent
@@ -36,6 +37,9 @@ import multitec.swing.request.WorkerRunnable
 import multitec.swing.request.WorkerSupplier
 import sam.swing.ScriptBase
 import sam.swing.tarefas.spv.SPV1001
+import sam.swing.tarefas.scf.SCF0101
+import sam.model.entities.da.Daa01;
+
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 class SCF0101 extends sam.swing.ScriptBase {
@@ -49,7 +53,7 @@ class SCF0101 extends sam.swing.ScriptBase {
     @Override
     public void execute(MultitecRootPanel tarefa) {
         this.tarefa = tarefa;
-        adicionaBotaoImprimirDoc()
+        adicionaBotaoImprimirDoc();
     }
 
     private void verificarDepartamentosNaturezas(){
@@ -82,7 +86,6 @@ class SCF0101 extends sam.swing.ScriptBase {
     private void selectionButtonPressed() {
 
         try{
-
             MSpread sprDaa0102s = getComponente("sprDaa0102s");
             def spread = sprDaa0102s.getValue();
             MTextFieldInteger txtAbb01num = getComponente("txtAbb01num");
@@ -91,12 +94,18 @@ class SCF0101 extends sam.swing.ScriptBase {
             MTextFieldString txtAbb01parcela = getComponente("txtAbb01parcela");
             MTextFieldInteger txtAbb01quita = getComponente("txtAbb01quita");
             MNavigation nvgAbf01codigo = getComponente("nvgAbf01codigo");
+            MTextFieldLocalDate txtDaa01dtBaixa = getComponente("txtDaa01dtBaixa");
+            MTextFieldLocalDate txtDaa01dtPgto = getComponente("txtDaa01dtPgto");
             Integer numDoc = txtAbb01num.getValue();
             String serie = txtAbb01serie.getValue();
             String codigoEnt =nvgAbe01codigo.getValue();
             String parcela =txtAbb01parcela.getValue();
             Integer quita = txtAbb01quita.getValue();
             String codBanco = nvgAbf01codigo.getValue();
+            String dtBaixa = txtDaa01dtBaixa.getValue();
+            String dtPgto = txtDaa01dtPgto.getValue();
+
+            if(dtBaixa != null || dtPgto != null) interromper("Documento já pago/baixado, não é possível imprimir o boleto.")
 
             //Verifica se existe integração bancária no documento
             if(spread.size() == 0){
