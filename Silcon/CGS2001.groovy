@@ -1,5 +1,5 @@
 /*
-    TELA: CGS0201 - ENTIDADES
+    TELA: CGS2001 - ENTIDADES
     FUNÇÃO:
     1- Desabilita o campo de observações caso um vendedor entrar no cadastro de determinada entidade
  */

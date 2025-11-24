@@ -14,6 +14,7 @@
             - Saldo devedor = soma(Doc. a Receber + Doc. Batch)
        - Se saldo > limite, pergunta se deseja continuar e solicita observação.
     4. Ao salvar, valida novamente o limite (sem solicitar nova observação).
+    5. Adiciona evento ao pressionar a tecla ESC, perguntando se realmente deseja sair
  */
 package scripts
 
@@ -45,6 +46,11 @@ public class SRF1002 extends sam.swing.ScriptBase{
     MultitecRootPanel tarefa
     @Override
     public void execute(MultitecRootPanel tarefa) {
+        this.tarefa = tarefa
+        adicionaEventoPCD();
+        adicionaEventoESC();
+    }
+    private void adicionaEventoPCD(){
         MNavigation nvgAbd01codigo = getComponente("nvgAbd01codigo");
         Long idEmpresa = obterEmpresaAtiva().getAac10id();
         MTextArea txtEaa01obsUsoInt = getComponente("txtEaa01obsUsoInt");
@@ -74,7 +80,18 @@ public class SRF1002 extends sam.swing.ScriptBase{
             }
         });
     }
+    private void adicionaEventoESC(){
+        KeyStroke escKey = KeyStroke.getKeyStroke("ESCAPE");
 
+        tarefa.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(escKey, "acaoEsc");
+
+        tarefa.getActionMap().put("acaoEsc", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if(exibirQuestao("Deseja realmente sair?")) tarefa.dispose()
+            }
+        });
+    }
     private TableMap buscarTitulosVencidosEntidade(String codEntidade, Long idEmpresa){
         Long idEntidade = buscarIdEntidade(codEntidade, idEmpresa);
 
