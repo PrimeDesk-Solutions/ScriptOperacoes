@@ -39,7 +39,10 @@ public class SCF0221 extends sam.swing.ScriptBase{
     public void execute(MultitecRootPanel panel) {
         this.tarefa = panel;
         JButton btnConciliarExtrato = getComponente("btnConciliarExtrato");
+        JButton btnImportarArquivo = getComponente("btnImportarArquivo");
+
         btnConciliarExtrato.addActionListener(e -> conciliado = true);
+        btnImportarArquivo.addActionListener(e -> conciliado = false);
 
         adicionarBotaoBuscarDocRepositorio();
         adicionarBotaoGravarDocRepositorio();
@@ -91,7 +94,7 @@ public class SCF0221 extends sam.swing.ScriptBase{
 
                     sprLctosExtrato.addRow(extratoDto)
                 }
-                exibirAtencao("Registros importados com sucesso!");
+                exibirInformacao("Registros importados com sucesso!");
 
                 executarSalvarOuExcluir("DELETE FROM aba2001 WHERE aba2001rd = " + idRepositorio);
             }else {
@@ -145,14 +148,17 @@ public class SCF0221 extends sam.swing.ScriptBase{
         if (!rdoNaoConciliados.isSelected()) throw new ValidacaoException("Somente é permitido a gravação de registros não conciliados no repositório de dados.");
     }
     private void realizarConexaoBD(){
-        String url = "jdbc:postgresql://192.168.1.12:5432/atibainha_sam4";
+        String url = "jdbc:postgresql://localhost:5432/atibainha_sam4";
+//        String url = "jdbc:postgresql://192.168.1.12:5432/atibainha_sam4";
         String user = "postgres";
         String password = "postgres";
         connection = DriverManager.getConnection(url, user, password);
         connection.setAutoCommit(false);
     }
     private Long buscarIdRepositorio(){
-        TableMap repositorio = executarConsulta("SELECT aba20id, aba20codigo FROM aba20 WHERE aba20codigo = '998'")[0];
+        Long idEmpresa = obterEmpresaAtiva().getAac10id();
+
+        TableMap repositorio = executarConsulta("SELECT aba20id, aba20codigo FROM aba20 WHERE aba20codigo = '998' AND aba20gc = " + idEmpresa)[0];
 
         if (repositorio.length == 0) throw new ValidacaoException("Não foi encontrado repositório de dados com o código 998 para gravar os documentos.");
 
@@ -196,11 +202,12 @@ public class SCF0221 extends sam.swing.ScriptBase{
     }
     private String montarJsonExtrato(SCF0221LctoExtratoDto extratoDto) {
         return String.format(
-                "{\"data\":\"%s\",\"valor\":%s,\"debito_credito\":\"%s\",\"historico\":\"%s\"}",
+                "{\"data\":\"%s\",\"valor\":%s,\"debito_credito\":\"%s\",\"historico\":\"%s\",\"id_pgto\":%s}",
                 extratoDto.data.toString().replace("-", ""),
                 extratoDto.valor,
                 extratoDto.dc,
-                extratoDto.historico.replace("\"", "\\\"")
+                extratoDto.historico.replace("\"", "\\\""),
+                extratoDto.dab1002id
         );
     }
     private void verificarCheckExtratoSpreadLancamentos(){
@@ -234,8 +241,6 @@ public class SCF0221 extends sam.swing.ScriptBase{
                 rollback();
                 interromper("Erro: " + e.getMessage());
             }
-        }else{
-            exibirInformacao("teste")
         }
     }
     private void gravarDocumentoRepositorio(SCF0221LctoExtratoDto extratoDto, Long aba2001rd, Long nextSequence){
