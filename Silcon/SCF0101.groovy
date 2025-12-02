@@ -11,6 +11,9 @@ import multitec.swing.components.autocomplete.MNavigation
 import multitec.swing.components.textfields.MTextFieldInteger
 import multitec.swing.components.textfields.MTextFieldLocalDate
 import multitec.swing.components.textfields.MTextFieldString
+import multitec.swing.components.textfields.MTextFieldBigDecimal
+import sam.swing.tarefas.scf.SCF0103
+import sam.swing.tarefas.scf.SCF0116
 
 import java.awt.event.ActionEvent
 import java.awt.event.ActionListener
@@ -39,9 +42,16 @@ import sam.swing.ScriptBase
 import sam.swing.tarefas.spv.SPV1001
 import sam.swing.tarefas.scf.SCF0101
 import sam.model.entities.da.Daa01;
+import multitec.swing.core.utils.WindowUtils;
+import sam.swing.tarefas.sce.SCE1503;
+
+
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+
+import java.time.LocalDate
+
 class SCF0101 extends sam.swing.ScriptBase {
     private MultitecRootPanel tarefa;
 
@@ -54,6 +64,7 @@ class SCF0101 extends sam.swing.ScriptBase {
     public void execute(MultitecRootPanel tarefa) {
         this.tarefa = tarefa;
         adicionaBotaoImprimirDoc();
+        criarMenu("Customizado", "Estornar Documento", e -> estornarDocumento(), null);
     }
 
     private void verificarDepartamentosNaturezas(){
@@ -66,6 +77,86 @@ class SCF0101 extends sam.swing.ScriptBase {
         if(spreadDepartamento.size() == 0 || spreadNaturezas.size() == 0 ) interromper("Não é permitido a inclusão de documentos sem departamentos ou naturezas.")
     }
 
+    private void estornarDocumento(){
+        try{
+            MNavigation nvgAbb10codigo = getComponente("nvgAbb10codigo");
+            MNavigation nvgAah01codigo = getComponente("nvgAah01codigo");
+            MNavigation nvgAbe01codigo = getComponente("nvgAbe01codigo");
+            MTextFieldInteger txtAbb01num = getComponente("txtAbb01num");
+            MTextFieldString txtAbb01serie = getComponente("txtAbb01serie");
+            MTextFieldString txtAbb01parcela = getComponente("txtAbb01parcela");
+            MTextFieldInteger txtAbb01quita = getComponente("txtAbb01quita");
+            MTextFieldBigDecimal txtAbb01valor = getComponente("txtAbb01valor");
+            MTextFieldLocalDate txtDaa01dtPgto = getComponente("txtDaa01dtPgto");
+            MTextFieldLocalDate txtDaa01dtBaixa = getComponente("txtDaa01dtBaixa");
+            MTextFieldLocalDate txtAbb01data = getComponente("txtAbb01data");
+            MSpread sprDaa0101s = getComponente("sprDaa0101s");
+            MSpread sprDaa01011s = getComponente("sprDaa01011s");
+
+            String codOperacao = nvgAbb10codigo.getValue();
+            String codTipoDoc = nvgAah01codigo.getValue();
+            String codEntidade = nvgAbe01codigo.getValue();
+            Integer numDoc = txtAbb01num.getValue();
+            String serie = txtAbb01serie.getValue();
+            String parcela = txtAbb01parcela.getValue();
+            String quita = txtAbb01quita.getValue();
+            String valor = txtAbb01valor.getValue();
+            Long idEmpresa = obterEmpresaAtiva().getAac10id();
+            LocalDate dtPgto = txtDaa01dtPgto.getValue();
+            LocalDate dtBaixa = txtDaa01dtBaixa.getValue();
+            LocalDate dtDoc = txtAbb01data.getValue();
+            def departamentos = sprDaa0101s.getValue();
+            def naturezas = sprDaa01011s.getValue();
+
+            if(dtPgto == null || dtBaixa == null) throw new RuntimeException("Não é possível estornar um documento não baixado.")
+
+            if(codOperacao == null) interromper("Necessário informar o código da operação.");
+            if(codTipoDoc == null) interromper("Necessário informar o tipo de documento.");
+            if(codEntidade == null) interromper("Necessário informar o código da entidade.");
+            if(numDoc == null) interromper("Necessário informar o número do documento.");
+            if(parcela == null) interromper("Necessário informar a parcela.");
+
+            Long idOperacao = obterIdOperacao(codOperacao, idEmpresa);
+            Long idTipoDoc = obterIdTipoDoc(codTipoDoc);
+            Long idEntidade = obterIdEntidade(codEntidade, idEmpresa);
+
+            if(idOperacao == null) interromper("Não foi encontrado operação comercial com o código " + codOperacao + " na empresa ativa.");
+            if(idTipoDoc == null) interromper("Não foi encontrado tipo de documento com o código " + codTipoDoc);
+            if(idEntidade == null) interromper("Não foi encontrado entidade com o código " + codEntidade + " na empresa ativa.");
+
+            SCF0116 scf0116 = new SCF0116();
+            WindowUtils.createJDialog(scf0116.getWindow(), scf0116);
+            scf0116.ctrAbb01operCod.setIdValue(idOperacao);
+            scf0116.ctrAbb01tipo.setIdValue(idTipoDoc);
+            scf0116.ctrAbb01ent.setIdValue(idEntidade);
+            scf0116.txtAbb01num.setValue(numDoc);
+            if(serie != null) scf0116.txtAbb01serie.setValue(serie);
+            if(parcela != null) scf0116.txtAbb01parcela.setValue(parcela);
+            scf0116.txtAbb01quita.setValue(quita);
+            scf0116.txtAbb01valor.setValue(new BigDecimal(valor));
+            scf0116.txtAbb01data.setValue(dtDoc);
+            scf0116.sprDaa0101s.setValue(departamentos)
+            scf0116.sprDaa01011s.setValue(naturezas)
+            scf0116.open.run();
+        }catch(Exception e){
+            interromper(e.getMessage())
+        }
+    }
+    private Long obterIdOperacao(String codOperacao, Long idEmpresa){
+        TableMap tmOperacao = executarConsulta("SELECT abb10id FROM abb10 WHERE abb10codigo = '" + codOperacao + "' AND abb10gc = " + idEmpresa.toString())[0];
+
+        return tmOperacao != null ? tmOperacao.getLong("abb10id") : null;
+    }
+    private Long obterIdTipoDoc(String codTipoDoc){
+        TableMap tmTipoDoc = executarConsulta("SELECT aah01id FROM aah01 WHERE aah01codigo = '" + codTipoDoc + "'")[0];
+
+        return tmTipoDoc != null ? tmTipoDoc.getLong("aah01id") : null;
+    }
+    private Long obterIdEntidade(String codEntidade, Long idEmpresa){
+        TableMap tmEntidade = executarConsulta("SELECT abe01id FROM abe01 WHERE abe01codigo = '" + codEntidade + "' AND abe01gc = " + idEmpresa)[0];
+
+        return tmEntidade != null ? tmEntidade.getLong("abe01id") : null;
+    }
     private void adicionaBotaoImprimirDoc(){
         def tela = tarefa.getWindow();
         tela.setBounds((int) tela.getBounds().x, (int) tela.getBounds().y, (int) tela.getBounds().width, (int) tela.getBounds().height + 40);
@@ -81,10 +172,8 @@ class SCF0101 extends sam.swing.ScriptBase {
                 selectionButtonPressed();
             }
         });
-
     }
     private void selectionButtonPressed() {
-
         try{
             MSpread sprDaa0102s = getComponente("sprDaa0102s");
             def spread = sprDaa0102s.getValue();
