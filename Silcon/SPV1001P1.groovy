@@ -59,6 +59,7 @@ public class Script extends sam.swing.ScriptBase{
         Long idEmpresa = obterEmpresaAtiva().getAac10id();
         String msgEnt = buscarMensagemEntidade(codEntidade, idEmpresa);
         MTextArea txtCcb01obs = getComponente("txtCcb01obs");
+        MNavigation nvgAbe30codigo = getComponente("nvgAbe30codigo");
 
         // Busca os titulos vencidos da entidade
         buscarTitulosVencidosEntidade(codEntidade, idEmpresa);
@@ -66,10 +67,12 @@ public class Script extends sam.swing.ScriptBase{
         // Exibe caixa de dialogo na tela com a mensagem do cadastro da entidade
         if (msgEnt != null) exibirTelaDeAtencaoComMensagemEntidade(msgEnt);
 
-        // Verifica Limite de Crédito da entidade
-        TableMap tmAbe01 = buscarInformacoesLimiteCreditoEntidade(codEntidade, idEmpresa);
+        if(nvgAbe30codigo.getValue() != "000"){ // Não valida limite de crédito para condição á vista
+            // Verifica Limite de Crédito da entidade
+            TableMap tmAbe01 = buscarInformacoesLimiteCreditoEntidade(codEntidade, idEmpresa);
 
-        if(tmAbe01.size() > 0 && tmAbe01.getTableMap("abe01json").getDate("dt_vcto_lim_credito") != null) verificarLimiteDeCredito(tmAbe01, codEntidade, idEmpresa);
+            if(tmAbe01.size() > 0 && tmAbe01.getTableMap("abe01json").getDate("dt_vcto_lim_credito") != null) verificarLimiteDeCredito(tmAbe01, codEntidade, idEmpresa);
+        }
 
         //txtCcb01obs.setValue("strTexto")
     }
@@ -193,7 +196,6 @@ public class Script extends sam.swing.ScriptBase{
     }
 
     private void verificarLimiteDeCredito(TableMap jsonAbe01, String codEntidade, Long idEmpresa){
-
         BigDecimal vlrLimiteCredito = jsonAbe01.getTableMap("abe01json").getBigDecimal_Zero("vlr_lim_credito");
         LocalDate dataAtual = LocalDate.now();
         LocalDate dtVencLimCredito = jsonAbe01.getTableMap("abe01json").getDate("dt_vcto_lim_credito");
