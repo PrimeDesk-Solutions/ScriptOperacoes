@@ -9,8 +9,11 @@ import multitec.swing.components.spread.MSpread
 import multitec.swing.components.spread.columns.MSpreadColumnCheckBox
 import multitec.swing.components.textfields.MTextFieldFile
 import multitec.swing.core.MultitecRootPanel
+import org.apache.poi.ss.usermodel.Table
+import sam.dto.scf.SCF0221DtoConciliar
 import sam.dto.scf.SCF0221LctoDto
 import sam.dto.scf.SCF0221LctoExtratoDto
+import multitec.swing.components.textfields.MTextFieldLocalDate;
 
 import javax.swing.JButton
 import javax.swing.JCheckBox
@@ -28,12 +31,15 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import sam.dto.scf.SCF0221DtoConciliar;
 
 
 public class SCF0221 extends sam.swing.ScriptBase{
     private MultitecRootPanel tarefa;
     private conciliado = false;
     Connection connection = null;
+    JButton btnBuscarDocRepositorio = new JButton();
+    JButton btnGravarDocsRepositorio = new JButton();
 
     @Override
     public void execute(MultitecRootPanel panel) {
@@ -44,14 +50,25 @@ public class SCF0221 extends sam.swing.ScriptBase{
         btnConciliarExtrato.addActionListener(e -> conciliado = true);
         btnImportarArquivo.addActionListener(e -> conciliado = false);
 
+        realizarConexaoBD();
         adicionarBotaoBuscarDocRepositorio();
         adicionarBotaoGravarDocRepositorio();
-        verificarCheckExtratoSpreadLancamentos();
+        //verificarCheckExtratoSpreadLancamentos();
+        adicionarEventoChkConciliarLancamento();
+        renomearCampos();
 
+    }
+    private void renomearCampos(){
+        JButton btnImportarArquivo = getComponente("btnImportarArquivo");
+        JButton btnConciliarExtrato = getComponente("btnConciliarExtrato");
+
+        btnImportarArquivo.setText("1 - Importar");
+        btnConciliarExtrato.setText("2 - Conciliar");
+        btnBuscarDocRepositorio.setText("3 - Buscar Docs Repositório");
+        btnGravarDocsRepositorio.setText("4 - Gravar Docs Repositório");
     }
     private void adicionarBotaoBuscarDocRepositorio(){
         JPanel pnlExtrato = getComponente("pnlExtrato");
-        JButton btnBuscarDocRepositorio = new JButton();
         btnBuscarDocRepositorio.setBounds(600, 5, 150, 40);
         btnBuscarDocRepositorio.setText("Buscar Docs Repositório");
         btnBuscarDocRepositorio.addActionListener(e -> btnBuscarDocRepositorioSelected(e));
@@ -59,14 +76,12 @@ public class SCF0221 extends sam.swing.ScriptBase{
     }
     private void adicionarBotaoGravarDocRepositorio(){
         JPanel pnlExtrato = getComponente("pnlExtrato");
-        JButton btnGravarDocsRepositorio = new JButton();
         btnGravarDocsRepositorio.setBounds(770, 5, 150, 40);
         btnGravarDocsRepositorio.setText("Gravar Docs Repositório");
         btnGravarDocsRepositorio.addActionListener(e -> btnGravarDocRepositorioSelected(e));
         pnlExtrato.add(btnGravarDocsRepositorio);
     }
     private void btnBuscarDocRepositorioSelected(ActionEvent e){
-
         try{
             MSpread sprLctosExtrato = getComponente("sprLctosExtrato");
 
@@ -83,6 +98,9 @@ public class SCF0221 extends sam.swing.ScriptBase{
                     BigDecimal valor = documento.getTableMap("aba2001json").getBigDecimal_Zero("valor");
                     String dc = documento.getTableMap("aba2001json").getString("debito_credito");
                     String historico = documento.getTableMap("aba2001json").getString("historico");
+                    String dados1 = documento.getTableMap("aba2001json").getString("dados1");
+                    String dados2 = documento.getTableMap("aba2001json").getString("id_pgto");
+
 
                     extratoDto.data = data;
                     extratoDto.valor = valor;
@@ -90,7 +108,7 @@ public class SCF0221 extends sam.swing.ScriptBase{
                     extratoDto.historico = historico
                     extratoDto.ni = null;
                     extratoDto.dados1 = null;
-                    extratoDto.dados2 = null;
+                    extratoDto.dados2 = dados2;
 
                     sprLctosExtrato.addRow(extratoDto)
                 }
@@ -123,8 +141,11 @@ public class SCF0221 extends sam.swing.ScriptBase{
             if(docsGravados > 0){
                 connection.commit();
                 exibirInformacao("Registros gravados com sucesso!");
+
+                sprLctosExtrato.clear();
+                sprLctosExtrato.refreshAll()
             }else{
-                exibirAtencao("Não há registros para gravar no repositório, todos os documentos podem ser conciliados.")
+                exibirAtencao("Nenhum registro gravado no repositório de dados.")
             }
 
             conciliado = false;
@@ -148,8 +169,8 @@ public class SCF0221 extends sam.swing.ScriptBase{
         if (!rdoNaoConciliados.isSelected()) throw new ValidacaoException("Somente é permitido a gravação de registros não conciliados no repositório de dados.");
     }
     private void realizarConexaoBD(){
-        String url = "jdbc:postgresql://localhost:5432/atibainha_sam4";
-//        String url = "jdbc:postgresql://192.168.1.12:5432/atibainha_sam4";
+        String url = "jdbc:postgresql://192.168.1.12:5432/atibainha_sam4";
+//        String url = "jdbc:postgresql://localhost:5432/atilatte_reforma";
         String user = "postgres";
         String password = "postgres";
         connection = DriverManager.getConnection(url, user, password);
@@ -168,6 +189,7 @@ public class SCF0221 extends sam.swing.ScriptBase{
         String sqlMaxSeq = "SELECT COALESCE(MAX(aba2001lcto), 0) FROM aba2001 WHERE aba2001rd = ?";
         PreparedStatement psMax = connection.prepareStatement(sqlMaxSeq);
         psMax.setLong(1, aba2001rd);
+
         ResultSet rs = psMax.executeQuery();
         rs.next();
         Long ultimaSeq = rs.getLong(1);
@@ -176,38 +198,69 @@ public class SCF0221 extends sam.swing.ScriptBase{
 
         return ultimaSeq;
     }
+    private List<String> buscarIdsExtratosASeremGravados(List<SCF0221LctoExtratoDto> listExtratoDto){
+        List<String> idsLcto = new ArrayList<>();
+        for(SCF0221LctoExtratoDto extratoDto in listExtratoDto){
+            idsLcto.add("'" + extratoDto.dados2 + "'");
+        }
+
+        return idsLcto;
+    }
     private Integer gravarDocumentosRepositorio(List<SCF0221LctoExtratoDto> listExtratoDto, Long aba2001rd, Long nextSequence){
+
+        List<String> idsLcto = buscarIdsExtratosASeremGravados(listExtratoDto); // Lista de todos os registros que serão gravados no repositório;
+
         // Prepara o insert dos documentos no repositório
         String sqlInsert = "INSERT INTO aba2001 (aba2001id, aba2001rd, aba2001lcto, aba2001json) " +
-                "VALUES (nextval('default_sequence'), ?, ?, ?::jsonb)";
+                            "VALUES (nextval('default_sequence'), ?, ?, ?::jsonb)";
 
         PreparedStatement psInsert = connection.prepareStatement(sqlInsert);
 
         Integer docsGravados = 0;
-        for (SCF0221LctoExtratoDto extratoDto : listExtratoDto) {
-            if(extratoDto.dab1002id == null){
-                docsGravados++;
-                nextSequence++; // incrementa manualmente
+        List<TableMap> idsDocJaGravado = buscarIdsDocRepositorio(idsLcto); // Lista todos os documentos já gravados no repositório
 
-                psInsert.setLong(1, aba2001rd);
-                psInsert.setLong(2, nextSequence);
-                psInsert.setString(3, montarJsonExtrato(extratoDto));
-                psInsert.addBatch(); // adiciona ao lote
+        for (SCF0221LctoExtratoDto extratoDto : listExtratoDto) {
+            String dados2 = extratoDto.dados2;
+
+            if(idsDocJaGravado != null && idsDocJaGravado.size() > 0){
+                def encontrou = idsDocJaGravado.stream().filter(tm -> tm.getString("idLcto") == dados2).findFirst(); // Verifica se o documento já está salvo no repositório
+
+                if (encontrou) continue
             }
+
+            docsGravados++;
+            nextSequence++; // incrementa manualmente
+
+            psInsert.setLong(1, aba2001rd);
+            psInsert.setLong(2, nextSequence);
+            psInsert.setString(3, montarJsonExtrato(extratoDto));
+            psInsert.addBatch(); // adiciona ao lote
+
         }
 
         if(docsGravados > 0) psInsert.executeBatch()
 
         return docsGravados;
     }
+    private List<TableMap> buscarIdsDocRepositorio(List<String> idsLcto){
+        Long idRepositorio = buscarIdRepositorio();
+        String filtroIds = idsLcto.toString().replace("[", "");
+        filtroIds = filtroIds.replace("]", '');
+
+        String sql = "SELECT CAST(aba2001json ->> 'id_pgto' AS TEXT) AS idLcto FROM aba2001 WHERE CAST(aba2001json ->> 'id_pgto' AS text) IN (" + filtroIds + ") AND aba2001rd = " + idRepositorio;
+
+        List<TableMap> tmDocGravado = executarConsulta(sql);
+
+        return tmDocGravado;
+    }
     private String montarJsonExtrato(SCF0221LctoExtratoDto extratoDto) {
         return String.format(
-                "{\"data\":\"%s\",\"valor\":%s,\"debito_credito\":\"%s\",\"historico\":\"%s\",\"id_pgto\":%s}",
+                "{\"data\":\"%s\",\"valor\":%s,\"debito_credito\":\"%s\",\"historico\":\"%s\",\"id_pgto\":\"%s\"}",
                 extratoDto.data.toString().replace("-", ""),
                 extratoDto.valor,
                 extratoDto.dc,
                 extratoDto.historico.replace("\"", "\\\""),
-                extratoDto.dab1002id
+                extratoDto.dados2
         );
     }
     private void verificarCheckExtratoSpreadLancamentos(){
@@ -219,31 +272,78 @@ public class SCF0221 extends sam.swing.ScriptBase{
                     Integer linha = sprLctos.getSelectedRow();
                     Boolean extrato = ((MCheckBox)e.getSource()).isSelected();
                     Long dab1002id = ((SCF0221LctoDto)sprLctos.getSpreadModel().getItens().get(linha)).getDab1002id();
-                    buscarIdLancamentoSpreadExtrato(dab1002id);
+                    gravarDocumentoRepositorio(dab1002id);
                 } catch (Exception err) {
                     interromper(err.getMessage())
                 }
             }
         });
     }
-    private void buscarIdLancamentoSpreadExtrato(Long dab1002id){
+    private void adicionarEventoChkConciliarLancamento(){
+        MRadioButton rdoNaoConciliados = getComponente("rdoNaoConciliados");
+        MSpread sprLctos = getComponente("sprLctos");
+        MSpread sprLctosExtrato = getComponente("sprLctosExtrato");
+        MTextFieldLocalDate txtDataConc = getComponente("txtDataConc");
+        MSpreadColumnCheckBox colunaConciliado = (MSpreadColumnCheckBox)sprLctos.getColumnByName("conc");
+        colunaConciliado.getCellEditorComponent().addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    if(!rdoNaoConciliados.isSelected()) return;
+                    Integer linha = sprLctos.getSelectedRow();
+                    SCF0221LctoDto scf0221LctoDto = (SCF0221LctoDto)sprLctos.getSpreadModel().getItens().get(linha);
+                    Boolean chkExtrato = scf0221LctoDto.extrato;
+                    Long dab1002id = ((SCF0221LctoDto)sprLctos.getSpreadModel().getItens().get(linha)).getDab1002id();
+                    Boolean conciliado = ((MCheckBox)e.getSource()).isSelected();
+                    LocalDate dtAtual = LocalDate.now();
+
+                    if(chkExtrato){
+                        SCF0221LctoExtratoDto extratoDtoLcto = buscarSCF0221LctoExtratoDtoPeloLancamento(dab1002id);
+                        if(extratoDtoLcto != null){
+                            LocalDate dtExtrato = extratoDtoLcto.data;
+                            txtDataConc.setValue(dtExtrato);
+                        }
+                    }else{
+                        txtDataConc.setValue(dtAtual);
+                    }
+
+                    if(sprLctosExtrato.getValue().size() > 0 && chkExtrato){
+                        for(int i = 0; i < sprLctosExtrato.getValue().size(); i++ ){
+                            SCF0221LctoExtratoDto extratoDto = sprLctosExtrato.getSpreadModel().getItens().get(i);
+                            Long dab1002Extrato = extratoDto.dab1002id;
+                            if(dab1002Extrato == dab1002id) sprLctosExtrato.removeRow(i); // Remove a linha da spread de extrato que foi conciliada ao clicar no check conciliar
+                        }
+                        sprLctosExtrato.refreshAll();
+                    }
+                } catch (Exception err) {
+                    interromper(err.getMessage())
+                }
+            }
+        });
+    }
+    private SCF0221LctoExtratoDto buscarSCF0221LctoExtratoDtoPeloLancamento(Long dab1002id){
         MSpread sprLctosExtrato = getComponente("sprLctosExtrato");
         Optional<SCF0221LctoExtratoDto> optional1 = ((List<SCF0221LctoDto>)sprLctosExtrato.getValue()).stream().filter(extratoDto -> extratoDto.dab1002id == dab1002id).findFirst();
 
         if(optional1.isPresent()){ // Documento encontrado na spread de extrato
             try{
-                if (connection == null || connection.isClosed()) realizarConexaoBD();
-                SCF0221LctoExtratoDto extratoDto = optional1.get();
-                Long idRepositorio = buscarIdRepositorio();
-                Long nextSequence = buscarProximaSequenciaRepositorio(idRepositorio);
-                gravarDocumentoRepositorio(extratoDto, idRepositorio, nextSequence)
+                 return optional1.get();
             }catch(SQLException e){
                 rollback();
                 interromper("Erro: " + e.getMessage());
             }
         }
     }
-    private void gravarDocumentoRepositorio(SCF0221LctoExtratoDto extratoDto, Long aba2001rd, Long nextSequence){
+    private void gravarDocumentoRepositorio(Long dab1002id){
+        SCF0221LctoExtratoDto extratoDto = buscarSCF0221LctoExtratoDtoPeloLancamento(dab1002id);
+        gravarDocumentoRepositorio(extratoDto);
+    }
+    private void gravarDocumentoRepositorio(SCF0221LctoExtratoDto extratoDto){
+
+        if (connection == null || connection.isClosed()) realizarConexaoBD();
+
+        Long idRepositorio = buscarIdRepositorio();
+        Long nextSequence = buscarProximaSequenciaRepositorio(idRepositorio);
+        
         // Prepara o insert dos documentos no repositório
         String sqlInsert = "INSERT INTO aba2001 (aba2001id, aba2001rd, aba2001lcto, aba2001json) " +
                 "VALUES (nextval('default_sequence'), ?, ?, ?::jsonb)";
