@@ -50,7 +50,6 @@ public class SCF0221 extends sam.swing.ScriptBase{
         btnConciliarExtrato.addActionListener(e -> conciliado = true);
         btnImportarArquivo.addActionListener(e -> conciliado = false);
 
-        realizarConexaoBD();
         adicionarBotaoBuscarDocRepositorio();
         adicionarBotaoGravarDocRepositorio();
         //verificarCheckExtratoSpreadLancamentos();
@@ -83,6 +82,8 @@ public class SCF0221 extends sam.swing.ScriptBase{
     }
     private void btnBuscarDocRepositorioSelected(ActionEvent e){
         try{
+            if (connection == null || connection.isClosed()) realizarConexaoBD();
+
             MSpread sprLctosExtrato = getComponente("sprLctosExtrato");
 
             realizarValidacoesIniciais();
@@ -98,16 +99,15 @@ public class SCF0221 extends sam.swing.ScriptBase{
                     BigDecimal valor = documento.getTableMap("aba2001json").getBigDecimal_Zero("valor");
                     String dc = documento.getTableMap("aba2001json").getString("debito_credito");
                     String historico = documento.getTableMap("aba2001json").getString("historico");
-                    String dados1 = documento.getTableMap("aba2001json").getString("dados1");
+                    String dados1 = documento.getTableMap("aba2001json").getString("chk_num");
                     String dados2 = documento.getTableMap("aba2001json").getString("id_pgto");
-
 
                     extratoDto.data = data;
                     extratoDto.valor = valor;
                     extratoDto.dc = dc
                     extratoDto.historico = historico
                     extratoDto.ni = null;
-                    extratoDto.dados1 = null;
+                    extratoDto.dados1 = dados1;
                     extratoDto.dados2 = dados2;
 
                     sprLctosExtrato.addRow(extratoDto)
@@ -126,17 +126,14 @@ public class SCF0221 extends sam.swing.ScriptBase{
         if(!conciliado) interromper("Antes de gravar os documentos, clique em conciliar para separar os documentos que serão gravados.");
 
         try {
-            realizarConexaoBD();
-            realizarValidacoesIniciais();
-
             MSpread sprLctosExtrato = getComponente("sprLctosExtrato");
-            List<SCF0221LctoExtratoDto> listExtratoDto = sprLctosExtrato.getValue();
 
-            if (listExtratoDto.isEmpty()) throw new ValidacaoException("Não há registros para serem gravados no repositório.");
+            if (connection == null || connection.isClosed()) realizarConexaoBD();
+            realizarValidacoesIniciais();
 
             Long aba2001rd = buscarIdRepositorio();
             Long nextSequence = buscarProximaSequenciaRepositorio(aba2001rd);
-            Integer docsGravados = gravarDocumentosRepositorio(listExtratoDto, aba2001rd, nextSequence);
+            Integer docsGravados = gravarDocumentosRepositorio(aba2001rd, nextSequence);
 
             if(docsGravados > 0){
                 connection.commit();
@@ -198,15 +195,37 @@ public class SCF0221 extends sam.swing.ScriptBase{
 
         return ultimaSeq;
     }
+    private List<SCF0221LctoExtratoDto> buscarExtratosASeremGravados(List<SCF0221LctoExtratoDto> listExtratoDto){
+        List<SCF0221LctoExtratoDto> extratos = new ArrayList<>();
+
+        for(SCF0221LctoExtratoDto extratoDto in listExtratoDto){
+            if(extratoDto.lancado) continue; // Linha do extrato gerado lançamento
+
+            extratos.add(extratoDto);
+        }
+
+        return extratos;
+
+    }
     private List<String> buscarIdsExtratosASeremGravados(List<SCF0221LctoExtratoDto> listExtratoDto){
         List<String> idsLcto = new ArrayList<>();
+
         for(SCF0221LctoExtratoDto extratoDto in listExtratoDto){
-            idsLcto.add("'" + extratoDto.dados2 + "'");
+            String chave = extratoDto.dados1 + extratoDto.dc + extratoDto.valor.toString();
+            idsLcto.add("'" + chave + "'");
         }
 
         return idsLcto;
     }
-    private Integer gravarDocumentosRepositorio(List<SCF0221LctoExtratoDto> listExtratoDto, Long aba2001rd, Long nextSequence){
+    private Integer gravarDocumentosRepositorio(Long aba2001rd, Long nextSequence){
+        MSpread sprLctosExtrato = getComponente("sprLctosExtrato");
+        List<SCF0221LctoExtratoDto> listExtratoDto = sprLctosExtrato.getValue();
+
+        if (listExtratoDto.isEmpty()) throw new ValidacaoException("Não há registros para serem gravados no repositório.");
+
+        listExtratoDto = buscarExtratosASeremGravados(listExtratoDto); // Atualiza a lista de extratos desconsiderando os que já foram lançados
+
+        if(listExtratoDto.size() == 0) return 0
 
         List<String> idsLcto = buscarIdsExtratosASeremGravados(listExtratoDto); // Lista de todos os registros que serão gravados no repositório;
 
@@ -217,13 +236,13 @@ public class SCF0221 extends sam.swing.ScriptBase{
         PreparedStatement psInsert = connection.prepareStatement(sqlInsert);
 
         Integer docsGravados = 0;
-        List<TableMap> idsDocJaGravado = buscarIdsDocRepositorio(idsLcto); // Lista todos os documentos já gravados no repositório
+        List<TableMap> idsDocJaGravado = buscarDocsJaGravadoRepositorio(idsLcto) // Lista todos os documentos já gravados no repositório
 
         for (SCF0221LctoExtratoDto extratoDto : listExtratoDto) {
-            String dados2 = extratoDto.dados2;
+            String chave = extratoDto.dados1 + extratoDto.dc + extratoDto.valor.toString();
 
             if(idsDocJaGravado != null && idsDocJaGravado.size() > 0){
-                def encontrou = idsDocJaGravado.stream().filter(tm -> tm.getString("idLcto") == dados2).findFirst(); // Verifica se o documento já está salvo no repositório
+                def encontrou = idsDocJaGravado.stream().filter(tm -> tm.getString("chave") == chave).findFirst(); // Verifica se o documento já está salvo no repositório
 
                 if (encontrou) continue
             }
@@ -242,12 +261,22 @@ public class SCF0221 extends sam.swing.ScriptBase{
 
         return docsGravados;
     }
-    private List<TableMap> buscarIdsDocRepositorio(List<String> idsLcto){
+    private List<TableMap> buscarDocsJaGravadoRepositorio(List<String> idsLcto){
         Long idRepositorio = buscarIdRepositorio();
         String filtroIds = idsLcto.toString().replace("[", "");
         filtroIds = filtroIds.replace("]", '');
 
-        String sql = "SELECT CAST(aba2001json ->> 'id_pgto' AS TEXT) AS idLcto FROM aba2001 WHERE CAST(aba2001json ->> 'id_pgto' AS text) IN (" + filtroIds + ") AND aba2001rd = " + idRepositorio;
+        String sql = "SELECT CONCAT(" +
+                            "CAST(aba2001json ->> 'chk_num' AS TEXT), " +
+                            "CAST(aba2001json ->> 'debito_credito' AS TEXT), " +
+                            "CAST(aba2001json ->> 'valor' AS TEXT)) AS chave " +
+                            "FROM aba2001 " +
+                            "WHERE CONCAT( " +
+                            "CAST(aba2001json ->> 'chk_num' AS TEXT), " +
+                            "CAST(aba2001json ->> 'debito_credito' AS TEXT), " +
+                            "CAST(aba2001json ->> 'valor' AS TEXT)) IN " +
+                            "(" + filtroIds + ") " +
+                            "AND aba2001rd = " + idRepositorio;
 
         List<TableMap> tmDocGravado = executarConsulta(sql);
 
@@ -255,12 +284,12 @@ public class SCF0221 extends sam.swing.ScriptBase{
     }
     private String montarJsonExtrato(SCF0221LctoExtratoDto extratoDto) {
         return String.format(
-                "{\"data\":\"%s\",\"valor\":%s,\"debito_credito\":\"%s\",\"historico\":\"%s\",\"id_pgto\":\"%s\"}",
+                "{\"data\":\"%s\",\"valor\":%s,\"debito_credito\":\"%s\",\"historico\":\"%s\",\"chk_num\":\"%s\"}",
                 extratoDto.data.toString().replace("-", ""),
                 extratoDto.valor,
                 extratoDto.dc,
                 extratoDto.historico.replace("\"", "\\\""),
-                extratoDto.dados2
+                extratoDto.dados1
         );
     }
     private void verificarCheckExtratoSpreadLancamentos(){

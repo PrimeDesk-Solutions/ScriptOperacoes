@@ -1,11 +1,13 @@
 package scripts
 
+import br.com.multitec.utils.ValidacaoException
 import br.com.multitec.utils.collections.TableMap
 import br.com.multitec.utils.http.HttpRequest
 import multitec.swing.components.MCheckBox
 import multitec.swing.components.MRadioButton
 import multitec.swing.components.autocomplete.MNavigation
 import multitec.swing.components.spread.MSpread
+import multitec.swing.components.spread.columns.MSpreadColumnCheckBox
 import multitec.swing.components.spread.columns.MSpreadColumnLocalDate
 import multitec.swing.components.textfields.MTextFieldInteger
 import multitec.swing.components.textfields.MTextFieldLocalDate
@@ -13,6 +15,7 @@ import multitec.swing.core.MultitecRootPanel
 import multitec.swing.core.utils.WindowUtils
 import org.apache.poi.ss.usermodel.Table
 import org.w3c.dom.events.Event
+import sam.dto.scf.SCF0221LctoDto
 import sam.model.entities.da.Daa01
 import sam.swing.ScriptBase
 import sam.swing.VariaveisDaSessao
@@ -45,8 +48,133 @@ class CGS0112 extends ScriptBase {
 //            btnMostrar.removeActionListener(event);
 //        }
 //
-//        btnMostrar.addActionListener(e -> preencherSpread(e) )
+//        btnMostrar.addActionListener(e -> preencherSpread(e))
+        adicionaEventoCheckMarcar();
+        adicionarEventoBtnGravar();
 
+    }
+    private void adicionaEventoCheckMarcar(){
+        MSpread sprDocs = getComponente("sprDocs");
+
+        TableMap tmCamposCustomUser = buscarCamposCustomUser();
+        MSpreadColumnCheckBox colunaMarcar = (MSpreadColumnCheckBox)sprDocs.getColumnByName("marcar");
+
+        colunaMarcar.getCellEditorComponent().addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    Integer linha = sprDocs.getSelectedRow();
+                    TableMap tmLinhaSpread  = sprDocs.getSpreadModel().getItens().get(linha);
+                    Boolean marcar = ((MCheckBox)e.getSource());
+                    if(tmCamposCustomUser != null || tmCamposCustomUser.size() > 0){
+                        //if(marcar) verificarLinhaSelecionada(tmLinhaSpread);
+                        marcarDocumentosIguais(tmLinhaSpread, marcar, linha); // Aprova automaticamente as demais linhas do mesmo documento que foram criadas devido a politica de segurança
+                    }
+                } catch (Exception err) {
+                    if(((MCheckBox)e.getSource()).isSelected()) ((MCheckBox)e.getSource()).setValue(0)
+                    interromper(err.getMessage())
+                }
+            }
+        });
+    }
+    private void marcarDocumentosIguais(TableMap tmLinhaSpread, Boolean marcar, Integer linha){
+        MSpread sprDocs = getComponente("sprDocs");
+        Long idCentralSelecionado = tmLinhaSpread.getLong("abb01id");
+        TableMap tmCamposCustomUser = buscarCamposCustomUser();
+        BigDecimal vlrLimiteCompraUser = tmCamposCustomUser.getBigDecimal_Zero("vlrLimCompra");
+        BigDecimal vlrDoc = tmLinhaSpread.getBigDecimal_Zero("abb01valor");
+
+        List<TableMap> documentos = sprDocs.getValue();
+
+        Integer count = 0;
+        for(documento in documentos){
+            Long idCentral = documento.getLong("abb01id")
+            
+            if(tmCamposCustomUser.getInteger("userMaster") == 0){ // Usuário não é master, aplica validações
+                if(idCentral == idCentralSelecionado && documento.getInteger("marcar") == 1 && vlrDoc > vlrLimiteCompraUser && marcar && count != linha) throw new RuntimeException("Documentos acima de R\$ " + String.format("%.2f", vlrLimiteCompraUser) + " podem ser aprovados uma unica vez por usuário." )
+
+                if(idCentral == idCentralSelecionado && vlrDoc <= vlrLimiteCompraUser ){
+                    if(documento.getInteger("marcar") == 0){
+                        documento.put("marcar", 1);
+                    }else{
+                        documento.put("marcar", 0);
+                    }
+                }
+            }else{
+                if(idCentral == idCentralSelecionado){
+                    if(documento.getInteger("marcar") == 0){
+                        documento.put("marcar", 1);
+                    }else{
+                        documento.put("marcar", 0);
+                    }
+                }
+            }
+
+            count++
+        }
+
+        sprDocs.refreshAll()
+    }
+    private TableMap buscarCamposCustomUser(){
+        Long idUser = obterUsuarioLogado().getAab10id();
+
+        return executarConsulta("SELECT cast(aab10camposcustom ->> 'valor_lim_compra' as numeric(18,6)) as vlrLimCompra, CAST(aab10camposCustom -> 'user_master' AS INTEGER) AS userMaster from aab10 where aab10id = " + idUser)[0];
+
+    }
+    private void adicionarEventoBtnGravar(){
+        JButton btnGravar = getComponente("btnGravar");
+        btnGravar.addActionListener(e -> validarDocumentosAoGravar() )
+    }
+    private void validarDocumentosAoGravar(){
+        MRadioButton rdoAprovar = getComponente("rdoAprovar");
+        if(!rdoAprovar.isSelected()) return
+
+        try{
+            MSpread sprDocs = getComponente("sprDocs");
+            List<TableMap> documentos = sprDocs.getValue();
+            Map<String, Integer> hashCountItens = new HashMap<>();
+            Map<String, BigDecimal> hashDocValor = new HashMap<>();
+
+            TableMap tmCamposCustomUser = buscarCamposCustomUser();
+            BigDecimal limiteUsuario = tmCamposCustomUser.getBigDecimal_Zero("vlrLimCompra");
+
+            if(tmCamposCustomUser.getInteger("userMaster") == 0){ // Usuário não é master, aplica validações
+                for(documento in documentos){
+                    Long idCentral = documento.getLong("abb01id");
+                    Integer numDoc = documento.getInteger("abb01num");
+                    String codTipoDoc = documento.getString("aah01codigo");
+                    String parcela = documento.getString("abb01parcela");
+                    BigDecimal valor = documento.getBigDecimal_Zero("abb01valor");
+                    Integer marcar = documento.getInteger("marcar");
+                    String key = codTipoDoc + " " + parcela + " " + numDoc.toString();
+
+                    if(marcar == 1){
+                        // Verifica se o documento selecionado já foi aprovado pelo usuário
+                        def tmAprovacoes = executarConsulta("SELECT abb0103user "+
+                                "FROM abb01 "+
+                                "INNER JOIN abb0103 ON abb0103central = abb01id "+
+                                "WHERE abb01num = " + numDoc + " " +
+                                "AND abb01parcela = '" + parcela + "' "+
+                                "AND abb0103user = " + obterUsuarioLogado().getAab10id())
+
+                        if(tmAprovacoes.size() > 0) throw new RuntimeException("O documento " + numDoc + " parcela " + parcela + " já foi aprovado pelo usuário " + obterUsuarioLogado().getAab10user() + ".")
+
+                        if(hashCountItens.containsKey(key)){
+                            hashCountItens.put(key, hashCountItens.get(key) + 1);
+                            hashDocValor.put(key, valor);
+                        }else{
+                            hashCountItens.put(key, 1)
+                        }
+                    }
+                }
+
+                // Verifica se foi marcado o mesmo documento mais de uma vez
+                for(String doc : hashCountItens.keySet()){
+                    if(hashCountItens.get(doc) >= 2 && limiteUsuario < hashDocValor.get(doc)) throw new RuntimeException("Não é permitido aprovar o mesmo documento mais de uma vez. Documento: " + doc.substring(2))
+                }
+            }
+        }catch(Exception e){
+            interromper(e.getMessage())
+        }
     }
 
     private void criarBotaoAbrirTarefa() {

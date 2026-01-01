@@ -54,43 +54,51 @@ public class Script extends sam.swing.ScriptBase{
     }
 
     private void adicionarEventoBtnIniciar(){
-        MNavigation nvgAbe01codigo = getComponente("nvgAbe01codigo");
-        String codEntidade = nvgAbe01codigo.getValue();
-        Long idEmpresa = obterEmpresaAtiva().getAac10id();
-        String msgEnt = buscarMensagemEntidade(codEntidade, idEmpresa);
-        MTextArea txtCcb01obs = getComponente("txtCcb01obs");
-        MNavigation nvgAbe30codigo = getComponente("nvgAbe30codigo");
+        try{
+            MNavigation nvgAbe01codigo = getComponente("nvgAbe01codigo");
+            String codEntidade = nvgAbe01codigo.getValue();
+            Long idEmpresa = obterEmpresaAtiva().getAac10id();
+            String msgEnt = buscarMensagemEntidade(codEntidade, idEmpresa);
+            MTextArea txtCcb01obs = getComponente("txtCcb01obs");
+            MNavigation nvgAbe30codigo = getComponente("nvgAbe30codigo");
 
-        // Busca os titulos vencidos da entidade
-        buscarTitulosVencidosEntidade(codEntidade, idEmpresa);
+            // Busca os titulos vencidos da entidade
+            buscarTitulosVencidosEntidade(codEntidade, idEmpresa);
 
-        // Exibe caixa de dialogo na tela com a mensagem do cadastro da entidade
-        if (msgEnt != null) exibirTelaDeAtencaoComMensagemEntidade(msgEnt);
+            // Exibe caixa de dialogo na tela com a mensagem do cadastro da entidade
+            if (msgEnt != null) exibirTelaDeAtencaoComMensagemEntidade(msgEnt);
 
-        if(nvgAbe30codigo.getValue() != "000"){ // Não valida limite de crédito para condição á vista
-            // Verifica Limite de Crédito da entidade
-            TableMap tmAbe01 = buscarInformacoesLimiteCreditoEntidade(codEntidade, idEmpresa);
+            if(nvgAbe30codigo.getValue() != "000"){ // Não valida limite de crédito para condição á vista
+                // Verifica Limite de Crédito da entidade
+                TableMap tmAbe01 = buscarInformacoesLimiteCreditoEntidade(codEntidade, idEmpresa);
 
-            if(tmAbe01.size() > 0 && tmAbe01.getTableMap("abe01json").getDate("dt_vcto_lim_credito") != null) verificarLimiteDeCredito(tmAbe01, codEntidade, idEmpresa);
+                if(tmAbe01.size() > 0 && tmAbe01.getTableMap("abe01json").getDate("dt_vcto_lim_credito") != null) verificarLimiteDeCredito(tmAbe01, codEntidade, idEmpresa);
+            }
+
+            //txtCcb01obs.setValue("strTexto")
+        }catch(Exception e){
+            interromper(e.getMessage())
         }
-
-        //txtCcb01obs.setValue("strTexto")
     }
 
     private void buscarTitulosVencidosEntidade(codEntidade, idEmpresa){
-        Long idEntidade = buscarIdEntidade(codEntidade, idEmpresa);
+        try{
+            Long idEntidade = buscarIdEntidade(codEntidade, idEmpresa);
 
-        String sql = "SELECT SUM(daa01valor) AS totDoc " +
-                "FROM daa01 " +
-                "INNER JOIN abb01 ON abb01id = daa01central " +
-                "WHERE daa01rp = 0 " +
-                "AND abb01quita = 0 " +
-                "AND daa01dtVctoR < current_date " +
-                "AND abb01ent = " + idEntidade;
-        TableMap totalTituloVencido = executarConsulta(sql)[0];
+            String sql = "SELECT SUM(daa01valor) AS totDoc " +
+                    "FROM daa01 " +
+                    "INNER JOIN abb01 ON abb01id = daa01central " +
+                    "WHERE daa01rp = 0 " +
+                    "AND abb01quita = 0 " +
+                    "AND daa01dtVctoR < current_date " +
+                    "AND abb01ent = " + idEntidade;
+            TableMap totalTituloVencido = executarConsulta(sql)[0];
 
-        if(totalTituloVencido.getBigDecimal_Zero("totDoc") > 0 ){
-            if(!exibirQuestao("Constam títulos vencidos para esse cliente, necessário consultar financeiro. Deseja continuar?")) interromper("Operação Cancelada.")
+            if(totalTituloVencido.getBigDecimal_Zero("totDoc") > 0 ){
+                if(!exibirQuestao("Constam títulos vencidos para esse cliente, necessário consultar financeiro. Deseja continuar?")) interromper("Operação Cancelada.")
+            }
+        }catch(Exception e){
+            interromper(e.getMessage());
         }
     }
 
@@ -262,8 +270,9 @@ public class Script extends sam.swing.ScriptBase{
     }
 
     private Long buscarIdEntidade(String codEntidade, Long idEmpresa){
-        String sql = "SELECT abe01id FROM abe01 WHERE abe01codigo = '" + codEntidade + "' AND abe01gc = " + idEmpresa.toString();
+        String sql = "SELECT abe01id FROM abe01 WHERE abe01codigo = '" + codEntidade + "' AND abe01gc = 1075797";
         TableMap tmEntidade = executarConsulta(sql)[0];
+        if(tmEntidade == null) interromper("Entidade não encontrada na empresa ativa.")
         Long idEntidade = tmEntidade.getLong("abe01id");
 
         return idEntidade;

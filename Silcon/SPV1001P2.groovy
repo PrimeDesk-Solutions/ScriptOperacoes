@@ -44,26 +44,28 @@ import java.time.format.DateTimeFormatter;
 public class Script extends sam.swing.ScriptBase{
     @Override
     public void execute(MultitecRootPanel tarefa) {
-        def btnConcluirVenda = getComponente("btnConcluirVenda");
+        JButton btnConcluirVenda = getComponente("btnConcluirVenda");
         btnConcluirVenda.addActionListener(e -> adicionarEventoBtnConcluir())
     }
     private void adicionarEventoBtnConcluir(){
-        MNavigation nvgAbe01codigo = getComponente("nvgAbe01codigo");
-        MNavigation nvgAbe01na = getComponente("nvgAbe01na");
-        String codEntidade = nvgAbe01codigo.getValue();
-        String nomeEntidade = nvgAbe01na.getValue();
-        Long idEmpresa = obterEmpresaAtiva().getAac10id();
-        MNavigation nvgAbe30codigo = getComponente("nvgAbe30codigo");
+        try{
+            MNavigation nvgAbe01codigo = getComponente("nvgAbe01codigo");
+            MNavigation nvgAbe01na = getComponente("nvgAbe01na");
+            String codEntidade = nvgAbe01codigo.getValue();
+            String nomeEntidade = nvgAbe01na.getValue();
+            Long idEmpresa = obterEmpresaAtiva().getAac10id();
+            MNavigation nvgAbe30codigo = getComponente("nvgAbe30codigo");
 
-        if(nvgAbe30codigo.getValue() == null && nomeEntidade.toUpperCase() == "CONSUMIDOR") interromper("Para consumidor final, é necessário haver uma condição de pagamento.")
+            buscarTitulosVencidosEntidade(codEntidade, idEmpresa);
 
-        buscarTitulosVencidosEntidade(codEntidade, idEmpresa);
+            // Verifica Limite de Crédito da entidade
+            TableMap tmAbe01 = buscarInformacoesLimiteCreditoEntidade(codEntidade, idEmpresa);
 
-        // Verifica Limite de Crédito da entidade
-        TableMap tmAbe01 = buscarInformacoesLimiteCreditoEntidade(codEntidade, idEmpresa);
-
-        if(nvgAbe30codigo.getValue() != "000"){ // Não valida limite de crédito para condição á vista
-            if(tmAbe01.size() > 0 && tmAbe01.getTableMap("abe01json").getDate("dt_vcto_lim_credito") != null) verificarLimiteDeCredito(tmAbe01, codEntidade, idEmpresa);
+            if(nvgAbe30codigo.getValue() != "000"){ // Não valida limite de crédito para condição á vista
+                if(tmAbe01.size() > 0 && tmAbe01.getTableMap("abe01json").getDate("dt_vcto_lim_credito") != null) verificarLimiteDeCredito(tmAbe01, codEntidade, idEmpresa);
+            }
+        }catch(Exception e){
+            interromper(e.getMessage());
         }
     }
     private void buscarTitulosVencidosEntidade(String codEntidade, Long idEmpresa){
@@ -154,7 +156,7 @@ public class Script extends sam.swing.ScriptBase{
         return tmValorDocs.getBigDecimal_Zero("totalGeral");
     }
     private Long buscarIdEntidade(String codEntidade, Long idEmpresa){
-        String sql = "SELECT abe01id FROM abe01 WHERE abe01codigo = '" + codEntidade + "' AND abe01gc = " + idEmpresa.toString();
+        String sql = "SELECT abe01id FROM abe01 WHERE abe01codigo = '" + codEntidade + "' AND abe01gc = 1075797 ";
         TableMap tmEntidade = executarConsulta(sql)[0];
         Long idEntidade = tmEntidade.getLong("abe01id");
 
