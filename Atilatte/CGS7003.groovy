@@ -69,6 +69,7 @@ class Script extends ScriptBase {
     @Override
     void execute(MultitecRootPanel panel) {
         this.tarefa = panel;
+        adicionarEventoBtnGravar();
         setarCamposDefault();
         adicionarComponentesPesagem();
         onClosed();
@@ -76,6 +77,27 @@ class Script extends ScriptBase {
         criarMenu("Balança", "Listar impressoras", e -> listarImpressoras(), null)
         criarMenu("Balança", "Listar portas", e -> listarPortas(), null)
         criarMenu("Balança", "Trazer lote", e-> setarCamposDeAcordoComACentral(), null)
+    }
+    private void adicionarEventoBtnGravar(){
+        JButton btnGravar = getComponente("btnGravar");
+
+        btnGravar.addActionListener(e -> preencherCampoLivre());
+    }
+
+    private void preencherCampoLivre(){
+        MSpread sprEtiquetas = getComponente("sprEtiquetas");
+        def etiquetas = sprEtiquetas.getValue();
+        MNavigation nvgAam05codigo = getComponente("nvgAam05codigo");
+        String codModelo = nvgAam05codigo.getValue();
+
+
+        for(int i = 0; i < sprEtiquetas.getRowCount(); i++) {
+            TableMap tmEtiqueta = new TableMap();
+            tmEtiqueta.put("modelo_etiqueta", codModelo)
+            sprEtiquetas.get(i).setJson(tmEtiqueta);
+
+            sprEtiquetas.refreshRow(i);
+        }
     }
 
     private void listarPortas(){
