@@ -9,6 +9,7 @@
     5- Altera a observação na pré-venda de acordo com a seleção do check "Com Nota".
         5.1 Quando selecionado para marcar o check "Com Nota", é colocado nas observações o texto "Com Nota."
         5.2 Quando selecionado para desmarcar o check "Com Nota" é retirado o texto "COM NOTA." das observações.
+    6- Ao clicar no botão concluir, é verificado se foi preenchido o campo comprador, e se consumido, não permite gravar com o texto "CONSUMIDOR"
  */
 package scripts
 
@@ -117,6 +118,7 @@ public class Script extends sam.swing.ScriptBase{
             void actionPerformed(ActionEvent e) {
                 verificarUnitariosQuantidadesItem();
                 verificarContatosConsumidorFinal();
+                verificarCampoComprador();
             }
         } )
     }
@@ -259,6 +261,20 @@ public class Script extends sam.swing.ScriptBase{
 
         if((ddd1 == null || fone1 == null) && (ddd2 == null || fone2 == null) && nomeEntidade.toUpperCase() == "CONSUMIDOR"){
             interromper("Para consumidor final é necessário preencher o contato.")
+        }
+    }
+    private void verificarCampoComprador(){
+        try{
+            MTextFieldString txtCcb01comprador = getComponente("txtCcb01comprador");
+            Ccb01 ccb01 = buscarLinhaPreVendaSelecionada();
+            String nomeEntidade = ccb01.ccb01ent.abe01nome;
+            String nomeComprador = txtCcb01comprador.getValue();
+
+            if(nomeEntidade.toUpperCase() == "CONSUMIDOR" && nomeComprador == null) throw new ValidacaoException("Para consumidor final é necessário preencher o campo comprador.");
+            if(nomeEntidade.toUpperCase() == "CONSUMIDOR" && nomeComprador.toUpperCase().contains("CONSUMIDOR")) throw new ValidacaoException("O nome do comprador não pode ser consumidor.")
+
+        }catch(Exception e){
+            interromper(e.getMessage())
         }
     }
 }

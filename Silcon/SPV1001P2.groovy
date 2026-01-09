@@ -5,12 +5,14 @@
     1. Verifica títulos vencidos:
        - Se houver, pergunta se deseja continuar.
     2. Validação do limite de crédito:
+       - Não valida limite de crédito se a condição de pagamento for Á Vista
        - Verifica data limite (se vencida, interrompe).
        - Calcula saldo devedor:
             - DAA01 (Docs a Receber): abb01quita = 0 AND daa01rp = 0
             - EAA01 (Financeiro 2-Batch): abb10tipoCod = 1 AND eaa01esMov = 1 AND eaa01clasDoc = 1 AND eaa01cancData IS NULL AND eaa01iSCF = 2
             - Saldo devedor = soma(Doc. a Receber + Doc. Batch)
        - Se saldo > limite, pergunta se deseja continuar
+     3. Quando pressionado o botão de concluir, retira-se a condição de pagamento, caso o cliente for CONSUMIDOR
  */
 package scripts
 
@@ -39,24 +41,33 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.IOException
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatter
+import java.util.function.Consumer;
 
 public class Script extends sam.swing.ScriptBase{
+    public Consumer exibirRegistroPadrao;
     @Override
     public void execute(MultitecRootPanel tarefa) {
         JButton btnConcluirVenda = getComponente("btnConcluirVenda");
-        btnConcluirVenda.addActionListener(e -> adicionarEventoBtnConcluir())
+        btnConcluirVenda.addActionListener(e -> adicionarEventoBtnConcluir());
+    }
+    private void removerCondicaoDePagamento(){
+        MNavigation nvgAbe01na = getComponente("nvgAbe01na");
+        String nomeEntidade = nvgAbe01na.getValue();
+        MNavigation nvgAbe30codigo = getComponente("nvgAbe30codigo");
+
+
+        if(nomeEntidade.toUpperCase().contains("CONSUMIDOR")) nvgAbe30codigo.getNavigationController().setIdValue(null)
     }
     private void adicionarEventoBtnConcluir(){
         try{
             MNavigation nvgAbe01codigo = getComponente("nvgAbe01codigo");
-            MNavigation nvgAbe01na = getComponente("nvgAbe01na");
             String codEntidade = nvgAbe01codigo.getValue();
-            String nomeEntidade = nvgAbe01na.getValue();
             Long idEmpresa = obterEmpresaAtiva().getAac10id();
             MNavigation nvgAbe30codigo = getComponente("nvgAbe30codigo");
 
             buscarTitulosVencidosEntidade(codEntidade, idEmpresa);
+            removerCondicaoDePagamento();
 
             // Verifica Limite de Crédito da entidade
             TableMap tmAbe01 = buscarInformacoesLimiteCreditoEntidade(codEntidade, idEmpresa);
