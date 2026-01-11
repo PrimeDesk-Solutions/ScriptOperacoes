@@ -46,6 +46,8 @@ import javax.swing.JOptionPane
 import javax.swing.JPanel
 import java.awt.event.ActionEvent
 import java.awt.event.ActionListener
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
 import java.awt.print.PrinterJob;
 
 public class Script extends sam.swing.ScriptBase{
@@ -54,17 +56,31 @@ public class Script extends sam.swing.ScriptBase{
     @Override
     public void execute(MultitecRootPanel tarefa) {
         this.panel = tarefa;
-        chkNota.setEnabled(false);
         criarMenu("Impressão Etiqueta", "Imprimir", e -> imprimirEtiqueta(), null);
+
+        adicionarEventoSpreadPreVenda()
         adicionarEventoBotaoConcluir();
+        adicionarEventoBtnIniciar();
         adicionarCheckComNota();
     }
+    private adicionarEventoBtnIniciar(){
+        JButton btnIniciar = getComponente("btnIniciar");
+        btnIniciar.addActionListener(e -> btnIniciarClicked());
+    }
+    private void btnIniciarClicked(){
+        chkNota.setValue(0);
+    }
     private void adicionarCheckComNota(){
-        MSpread sprCcb01 = getComponente("sprCcb01s");
         JPanel pnlItens = getComponente("pnlItens");
         chkNota.setText("Com Nota");
         chkNota.setBounds(new Rectangle(new Point(1250, 0), chkNota.getPreferredSize()));
         pnlItens.add(chkNota);
+        chkNota.setValue(0);
+        chkNota.setEnabled(false);
+
+        adicionarEventoChkComNota();
+    }
+    private adicionarEventoChkComNota(){
         chkNota.addActionListener(new ActionListener() {
             @Override
             void actionPerformed(ActionEvent e) {
@@ -73,16 +89,8 @@ public class Script extends sam.swing.ScriptBase{
                 } else{
                     apagarMensagemComNota();
                 }
-
             }
         });
-
-        sprCcb01.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
-            @Override
-            void valueChanged(ListSelectionEvent e) {
-                chkNota.setEnabled(true);
-            }
-        })
     }
     private void inserirMensagemComNota(){
         MTextArea txtCcb01obs = getComponente("txtCcb01obs");
@@ -110,6 +118,32 @@ public class Script extends sam.swing.ScriptBase{
             btnGravarObservacao.doClick()
         }
     }
+    private adicionarEventoSpreadPreVenda(){
+        MSpread sprCcb01s = getComponente("sprCcb01s");
+
+        sprCcb01s.addMouseListener(new MouseAdapter() {
+            @Override
+            void mouseClicked(MouseEvent e) {
+                if(sprCcb01s.getSelectedRow() >= 0){
+                    chkNota.setEnabled(true);
+                    chkNota.setValue(0);
+                }
+            }
+        });
+
+        sprCcb01s.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
+            @Override
+            void valueChanged(ListSelectionEvent e) {
+                if(sprCcb01s.getValue().size() > 0){
+                    chkNota.setEnabled(true);
+                }else{
+                    chkNota.setValue(0);
+                    chkNota.setEnabled(false);
+                }
+
+            }
+        })
+    }
     private void adicionarEventoBotaoConcluir(){
         JButton btnConcluir = getComponente("btnConcluir");
 
@@ -132,12 +166,12 @@ public class Script extends sam.swing.ScriptBase{
             WorkerSupplier.create(this.panel.getWindow(), {
                 return buscarDadosImpressao(numPreVenda);
             })
-            .initialText("Imprimindo Etiqueta")
-            .dialogVisible(true)
-            .success({ bytes ->
-                enviarDadosParaImpressao(bytes, numPreVenda);
-            })
-            .start();
+                    .initialText("Imprimindo Etiqueta")
+                    .dialogVisible(true)
+                    .success({ bytes ->
+                        enviarDadosParaImpressao(bytes);
+                    })
+                    .start();
         }catch(Exception err){
             ErrorDialog.defaultCatch(this.panel.getWindow(), err);
         }
@@ -165,7 +199,7 @@ public class Script extends sam.swing.ScriptBase{
         JsonNode obj = mapper.readTree(json);
         return HttpRequest.create().controllerEndPoint("relatorio").methodEndPoint("gerarRelatorio").parseBody(obj).post().getResponseBody()
     }
-    protected void enviarDadosParaImpressao(byte[] bytes, Integer idDoc) {
+    protected void enviarDadosParaImpressao(byte[] bytes) {
         try {
             if(bytes == null || bytes.length == 0) {
                 interromper("Não foi encontrado o relatório ou parametrizações para a impressão.");
