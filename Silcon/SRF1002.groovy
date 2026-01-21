@@ -22,6 +22,8 @@ import br.com.multitec.utils.collections.TableMap
 import multitec.swing.components.autocomplete.MNavigation
 import multitec.swing.components.textfields.MTextArea
 import multitec.swing.core.MultitecRootPanel
+import multitec.swing.core.utils.WindowUtils
+
 import java.awt.event.FocusEvent
 import java.awt.event.FocusListener;
 import javax.swing.SwingUtilities
@@ -70,6 +72,8 @@ import java.util.Comparator;
 import multitec.swing.core.dialogs.Messages;
 import multitec.swing.request.WorkerRequest;
 import multitec.swing.request.WorkerRunnable;
+import sam.swing.tarefas.srf.SRF1002;
+
 
 public class SRF1002 extends sam.swing.ScriptBase{
     def strTexto = "";
@@ -78,10 +82,35 @@ public class SRF1002 extends sam.swing.ScriptBase{
     MultitecRootPanel tarefa
     @Override
     public void execute(MultitecRootPanel tarefa) {
-        this.tarefa = tarefa
+        this.tarefa = tarefa;
+        tarefa.getWindow().getJMenuBar().getMnuArquivo().getMniCancelar().addActionListener(mnu -> this.adicionaEventoESC(mnu));
         criarMenu("Impressão", "Imprimir Documento", { btnImprimirPressed() }, null);
         adicionaEventoPCD();
-        adicionaEventoESC();
+        adicionaBotãoImprimirDanfe();
+    }
+    private void adicionaBotãoImprimirDanfe(){
+        JPanel panel7 = getComponente("panel7");
+        def tela = tarefa.getWindow();
+        tela.setBounds((int) tela.getBounds().x, (int) tela.getBounds().y, (int) tela.getBounds().width, (int) tela.getBounds().height + 40);
+
+        def btnImprimir = new JButton();
+        btnImprimir.setText("Imprimir Danfe");
+
+
+        // X    Y    W  H
+        btnImprimir.setBounds(110, 100, 160, 25);
+        panel7.add(btnImprimir);
+
+        panel7.setLayout(null);
+
+        panel7.revalidate();
+        panel7.repaint();
+
+        btnImprimir.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                btnImprimirPressed();
+            }
+        });
     }
     private void adicionaEventoPCD(){
         MNavigation nvgAbd01codigo = getComponente("nvgAbd01codigo");
@@ -113,17 +142,8 @@ public class SRF1002 extends sam.swing.ScriptBase{
             }
         });
     }
-    private void adicionaEventoESC(){
-        KeyStroke escKey = KeyStroke.getKeyStroke("ESCAPE");
-
-        tarefa.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(escKey, "acaoEsc");
-
-        tarefa.getActionMap().put("acaoEsc", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if(exibirQuestao("Deseja realmente sair?")) tarefa.dispose()
-            }
-        });
+    protected void adicionaEventoESC(ActionEvent evt) {
+        if(!exibirQuestao("Deseja realmente sair sem SALVAR?")) interromper("Por favor salvar antes de SAIR.");
     }
     private TableMap buscarTitulosVencidosEntidade(String codEntidade, Long idEmpresa){
         Long idEntidade = buscarIdEntidade(codEntidade, idEmpresa);
@@ -415,6 +435,8 @@ public class SRF1002 extends sam.swing.ScriptBase{
     private void btnImprimirPressed() {
         try {
             TableMap documento = verificarDocumentoSalvo();
+            MNavigation nvgAah01codigo = getComponente("nvgAah01codigo");
+            String codTipoDoc = nvgAah01codigo.getValue();
 
             if(documento.isEmpty()) interromper("Necessário salvar o documento antes de imprimir.");
 
@@ -422,7 +444,7 @@ public class SRF1002 extends sam.swing.ScriptBase{
 
 
                     WorkerSupplier.create(this.tarefa.getWindow(), {
-                return buscarDadosImpressao(idDocumento);
+                return buscarDadosImpressao(idDocumento, codTipoDoc);
             })
                     .initialText("Imprimindo DANFE")
                     .dialogVisible(true)
@@ -435,12 +457,22 @@ public class SRF1002 extends sam.swing.ScriptBase{
         }
     }
 
-    private byte[] buscarDadosImpressao(Long idDocumento) {
-        String json = "{\"nome\":\"Silcon.relatorios.srf.SRF_Danfe\",\"filtros\":{\"eaa01id\":"+idDocumento+"}}"
+    private byte[] buscarDadosImpressao(Long idDocumento, String codTipoDoc) {
+        String caminhoRelatorio = buscarCaminhoRelatorio(codTipoDoc);
+        String json = "{\"nome\":\""+caminhoRelatorio+"\",\"filtros\":{\"eaa01id\":"+idDocumento+"}}"
 
         ObjectMapper mapper = new ObjectMapper();
         JsonNode obj = mapper.readTree(json);
         return HttpRequest.create().controllerEndPoint("relatorio").methodEndPoint("gerarRelatorio").parseBody(obj).post().getResponseBody()
+    }
+    private String buscarCaminhoRelatorio(String codTipoDoc){
+        String sql = "SELECT aah01formRelDoc FROM aah01 WHERE aah01codigo = '" + codTipoDoc + "'";
+
+        TableMap tmTipoDoc = executarConsulta(sql)[0];
+
+        if(tmTipoDoc.size() == 0) throw new ValidacaoException("Não foi encontrado relatório de impressão no tipo de documento " + codTipoDoc);
+
+        return tmTipoDoc.getString("aah01formRelDoc");
     }
 
     protected void enviarDadosParaImpressao(byte[] bytes) {
