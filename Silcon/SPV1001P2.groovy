@@ -12,7 +12,6 @@
             - EAA01 (Financeiro 2-Batch): abb10tipoCod = 1 AND eaa01esMov = 1 AND eaa01clasDoc = 1 AND eaa01cancData IS NULL AND eaa01iSCF = 2
             - Saldo devedor = soma(Doc. a Receber + Doc. Batch)
        - Se saldo > limite, pergunta se deseja continuar
-     3. Quando pressionado o botão de concluir, retira-se a condição de pagamento, caso o cliente for CONSUMIDOR
  */
 package scripts
 
@@ -67,7 +66,7 @@ public class Script extends sam.swing.ScriptBase{
             MNavigation nvgAbe30codigo = getComponente("nvgAbe30codigo");
 
             buscarTitulosVencidosEntidade(codEntidade, idEmpresa);
-            removerCondicaoDePagamento();
+            //removerCondicaoDePagamento();
 
             // Verifica Limite de Crédito da entidade
             TableMap tmAbe01 = buscarInformacoesLimiteCreditoEntidade(codEntidade, idEmpresa);
