@@ -94,7 +94,7 @@ public class SRF1002 extends sam.swing.ScriptBase{
         tela.setBounds((int) tela.getBounds().x, (int) tela.getBounds().y, (int) tela.getBounds().width, (int) tela.getBounds().height + 40);
 
         def btnImprimir = new JButton();
-        btnImprimir.setText("Imprimir Danfe");
+        btnImprimir.setText("Imprimir");
 
 
         // X    Y    W  H
@@ -446,7 +446,7 @@ public class SRF1002 extends sam.swing.ScriptBase{
                     WorkerSupplier.create(this.tarefa.getWindow(), {
                 return buscarDadosImpressao(idDocumento, codTipoDoc);
             })
-                    .initialText("Imprimindo DANFE")
+                    .initialText("Imprimindo Documento")
                     .dialogVisible(true)
                     .success({ bytes ->
                         enviarDadosParaImpressao(bytes);
