@@ -10,12 +10,12 @@
         5.1 Quando selecionado para marcar o check "Com Nota", é colocado nas observações o texto "Com Nota."
         5.2 Quando selecionado para desmarcar o check "Com Nota" é retirado o texto "COM NOTA." das observações.
     6- Ao clicar no botão concluir, é verificado se foi preenchido o campo comprador, e se consumido, não permite gravar com o texto "CONSUMIDOR"
+    7- Altera a exibição da lista de itens no F4
  */
 package scripts
 
 import multitec.swing.components.textfields.MTextArea
 import multitec.swing.components.textfields.MTextFieldString
-
 import javax.swing.event.ListSelectionEvent
 import javax.swing.event.ListSelectionListener
 import java.awt.Rectangle;
@@ -35,7 +35,6 @@ import org.apache.pdfbox.printing.PDFPageable
 import sam.model.entities.ab.Abm01
 import sam.model.entities.cc.Ccb01
 import sam.model.entities.cc.Ccb0101
-
 import javax.mail.Session
 import javax.print.DocFlavor
 import javax.print.PrintService
@@ -49,19 +48,39 @@ import java.awt.event.ActionListener
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.awt.print.PrinterJob;
+import br.com.multitec.utils.UiSqlColumn;
+
 
 public class Script extends sam.swing.ScriptBase{
     MultitecRootPanel panel;
     MCheckBox chkNota = new MCheckBox();
+    public Runnable  windowLoadOriginal;
     @Override
     public void execute(MultitecRootPanel tarefa) {
         this.panel = tarefa;
         criarMenu("Impressão Etiqueta", "Imprimir", e -> imprimirEtiqueta(), null);
+        this.windowLoadOriginal = tarefa.windowLoad ;
+        tarefa.windowLoad = {novoWindowLoad()};
 
         adicionarEventoSpreadPreVenda()
         adicionarEventoBotaoConcluir();
         adicionarEventoBtnIniciar();
         adicionarCheckComNota();
+    }
+    protected void novoWindowLoad(){
+        this.windowLoadOriginal.run();
+
+        def ctrAbm01 = getComponente("ctrAbm01");
+        ctrAbm01.f4Columns = () -> {
+            List<UiSqlColumn> uiSqlColumn = new ArrayList<>();
+            UiSqlColumn abm01codigo = new UiSqlColumn("abm01codigo", "abm01codigo", "Código", 20);
+            UiSqlColumn abm01gtin = new UiSqlColumn("abm01gtin", "abm01gtin", "GTIN", 20);
+            UiSqlColumn abm01descr = new UiSqlColumn("abm01descr", "abm01descr", "Descrição", 120);
+            UiSqlColumn abm01complem = new UiSqlColumn("abm01complem", "abm01complem", "Fabricante", 255);
+            uiSqlColumn.addAll(Arrays.asList(abm01codigo,abm01descr, abm01complem, abm01gtin));
+            return uiSqlColumn;
+        };
+
     }
     private adicionarEventoBtnIniciar(){
         JButton btnIniciar = getComponente("btnIniciar");

@@ -18,6 +18,7 @@
  */
 package scripts
 
+import br.com.multitec.utils.UiSqlColumn
 import br.com.multitec.utils.collections.TableMap
 import multitec.swing.components.autocomplete.MNavigation
 import multitec.swing.components.textfields.MTextArea
@@ -73,20 +74,40 @@ import multitec.swing.core.dialogs.Messages;
 import multitec.swing.request.WorkerRequest;
 import multitec.swing.request.WorkerRunnable;
 import sam.swing.tarefas.srf.SRF1002;
+import br.com.multitec.utils.UiSqlColumn;
 
 
 public class SRF1002 extends sam.swing.ScriptBase{
     def strTexto = "";
     String obs = "";
     Integer cancelou = 0;
-    MultitecRootPanel tarefa
+    MultitecRootPanel tarefa;
+    public Runnable  windowLoadOriginal;
+
     @Override
     public void execute(MultitecRootPanel tarefa) {
         this.tarefa = tarefa;
         tarefa.getWindow().getJMenuBar().getMnuArquivo().getMniCancelar().addActionListener(mnu -> this.adicionaEventoESC(mnu));
         criarMenu("Impressão", "Imprimir Documento", { btnImprimirPressed() }, null);
+        this.windowLoadOriginal = tarefa.windowLoad ;
+        tarefa.windowLoad = {novoWindowLoad()};
         adicionaEventoPCD();
         adicionaBotãoImprimirDanfe();
+    }
+    protected void novoWindowLoad(){
+        this.windowLoadOriginal.run();
+
+        def ctrAbb01ent = getComponente("ctrAbb01ent");
+
+        ctrAbb01ent.f4Columns = () -> {
+            java.util.List<UiSqlColumn> uiSqlColumn = new ArrayList<>();
+            UiSqlColumn abe01codigo = new UiSqlColumn("abe01codigo", "abe01codigo", "Código", 10);
+            UiSqlColumn abe01na = new UiSqlColumn("abe01na", "abe01na", "Nome Abreviado", 40);
+            UiSqlColumn abe01nome = new UiSqlColumn("abe01nome", "abe01nome", "Nome", 60);
+            UiSqlColumn abe01ni = new UiSqlColumn("abe01ni", "abe01ni", "Número da Inscrição", 60);
+            uiSqlColumn.addAll(Arrays.asList(abe01codigo, abe01na, abe01nome, abe01ni));
+            return uiSqlColumn;
+        };
     }
     private void adicionaBotãoImprimirDanfe(){
         JPanel panel7 = getComponente("panel7");
