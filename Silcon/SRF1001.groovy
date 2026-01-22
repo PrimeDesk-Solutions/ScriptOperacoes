@@ -60,7 +60,7 @@ public class Script extends sam.swing.ScriptBase{
             MNavigation nvgAah01codigo = getComponente("nvgAah01codigo");
             String codTipoDoc = nvgAah01codigo.getValue();
 
-            if(eaa01 == null) interromper("Antes de imprimir é necessário salvar o documento.");
+            if(eaa01 == null || eaa01.eaa01id == null) interromper("Antes de imprimir é necessário salvar o documento.");
 
             Long idDocumento = eaa01.eaa01id;
 
@@ -90,7 +90,7 @@ public class Script extends sam.swing.ScriptBase{
 
         TableMap tmTipoDoc = executarConsulta(sql)[0];
 
-        if(tmTipoDoc.size() == 0) throw new ValidacaoException("Não foi encontrado relatório de impressão no tipo de documento " + codTipoDoc);
+        if(tmTipoDoc == null || tmTipoDoc.size() == 0) throw new ValidacaoException("Não foi encontrado relatório de impressão no tipo de documento " + codTipoDoc);
 
         return tmTipoDoc.getString("aah01formRelDoc");
     }
