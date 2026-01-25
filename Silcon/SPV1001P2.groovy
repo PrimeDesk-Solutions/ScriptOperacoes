@@ -12,6 +12,7 @@
             - EAA01 (Financeiro 2-Batch): abb10tipoCod = 1 AND eaa01esMov = 1 AND eaa01clasDoc = 1 AND eaa01cancData IS NULL AND eaa01iSCF = 2
             - Saldo devedor = soma(Doc. a Receber + Doc. Batch)
        - Se saldo > limite, pergunta se deseja continuar
+     3. Altera o número de vias para 1 quando NFCE e inativa o campo de número de vias
  */
 package scripts
 
@@ -42,6 +43,7 @@ import java.io.IOException
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.function.Consumer;
+import multitec.swing.components.MRadioButton;
 
 public class Script extends sam.swing.ScriptBase{
     public Consumer exibirRegistroPadrao;
@@ -49,6 +51,7 @@ public class Script extends sam.swing.ScriptBase{
     public void execute(MultitecRootPanel tarefa) {
         JButton btnConcluirVenda = getComponente("btnConcluirVenda");
         btnConcluirVenda.addActionListener(e -> adicionarEventoBtnConcluir());
+        adicionarEventoChkNFCe();
     }
     private void removerCondicaoDePagamento(){
         MNavigation nvgAbe01na = getComponente("nvgAbe01na");
@@ -57,6 +60,33 @@ public class Script extends sam.swing.ScriptBase{
 
 
         if(nomeEntidade.toUpperCase().contains("CONSUMIDOR")) nvgAbe30codigo.getNavigationController().setIdValue(null)
+    }
+    private void adicionarEventoChkNFCe(){
+        MRadioButton rdoNFCe65 = getComponente("rdoNFCe65");
+
+        rdoNFCe65.addFocusListener(new FocusListener() {
+            @Override
+            void focusGained(FocusEvent e) {
+                alterarNumeroDeVias(1, false)
+            }
+
+            @Override
+            void focusLost(FocusEvent e) {
+               alterarNumeroDeVias(2, true)
+            }
+        })
+
+        //rdoNFCe65.addActionListener(e -> alterarNumeroDeVias(1, false));
+    }
+    private void alterarNumeroDeVias(Integer qtd, Boolean ativar){
+        try{
+            def txtVias = getComponente("txtVias");
+            txtVias.setValue(qtd);
+
+            txtVias.setEnabled(ativar);
+        }catch (Exception e){
+            interromper(e.getMessage())
+        }
     }
     private void adicionarEventoBtnConcluir(){
         try{
