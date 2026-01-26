@@ -15,7 +15,11 @@
        - Se saldo > limite, pergunta se deseja continuar e solicita observação.
     4. Ao salvar, valida novamente o limite (sem solicitar nova observação).
     5. Adiciona evento ao pressionar a tecla ESC, perguntando se realmente deseja sair
+    6. Cria botão de imprimir documento, ao selecionar o botão considerar:
+        6.1 Tipo de documento 04 ou 16, abrir tela de impressão de documento (SRF1009);
+        6.2 Demais tipos de documentos enviar diretamente para impressora
  */
+
 package scripts
 
 import br.com.multitec.utils.UiSqlColumn
@@ -24,7 +28,8 @@ import multitec.swing.components.autocomplete.MNavigation
 import multitec.swing.components.textfields.MTextArea
 import multitec.swing.core.MultitecRootPanel
 import multitec.swing.core.utils.WindowUtils
-
+import sam.swing.tarefas.scf.SCF0102
+import sam.swing.tarefas.srf.SRF1001
 import java.awt.event.FocusEvent
 import java.awt.event.FocusListener;
 import javax.swing.SwingUtilities
@@ -74,7 +79,10 @@ import multitec.swing.core.dialogs.Messages;
 import multitec.swing.request.WorkerRequest;
 import multitec.swing.request.WorkerRunnable;
 import sam.swing.tarefas.srf.SRF1002;
+import sam.swing.tarefas.srf.SRF1009;
 import br.com.multitec.utils.UiSqlColumn;
+import multitec.swing.components.textfields.MTextFieldInteger;
+import multitec.swing.components.textfields.MTextFieldString;
 
 
 public class SRF1002 extends sam.swing.ScriptBase{
@@ -463,37 +471,77 @@ public class SRF1002 extends sam.swing.ScriptBase{
 
             Long idDocumento = documento.getLong("eaa01id");
 
-
-                    WorkerSupplier.create(this.tarefa.getWindow(), {
-                return buscarDadosImpressao(idDocumento, codTipoDoc);
-            })
-                    .initialText("Imprimindo Documento")
-                    .dialogVisible(true)
-                    .success({ bytes ->
-                        enviarDadosParaImpressao(bytes);
-                    })
-                    .start();
+            if(!codTipoDoc.equals("04") && !codTipoDoc.equals("16")){
+                WorkerSupplier.create(this.tarefa.getWindow(), {
+                    return buscarDadosImpressao(idDocumento, codTipoDoc);
+                })
+                .initialText("Imprimindo Documento")
+                .dialogVisible(true)
+                .success({ bytes ->
+                    enviarDadosParaImpressao(bytes);
+                })
+                .start();
+            }else{
+                abrirTelaImpressaoDocs(codTipoDoc, idDocumento);
+            }
         } catch (Exception err) {
             ErrorDialog.defaultCatch(this.tarefa.getWindow(), err);
         }
     }
+    private abrirTelaImpressaoDocs(String codTipoDoc, Long idDocumento){
+        try{
+            TableMap tmTipoDoc = buscarInformacoesTipoDoc(codTipoDoc);
+            Long idTipoDoc = tmTipoDoc.getLong("aah01id");
+            MTextFieldInteger txtAbb01num = getComponente("txtAbb01num");
+            MTextFieldString txtEaa01nfeChave = getComponente("txtEaa01nfeChave");
+            Integer numDoc = txtAbb01num.getValue();
+            String protocolo = txtEaa01nfeChave.getValue();
+            Boolean somenteComProtocolo = !(protocolo == null || protocolo.isEmpty());
+            Integer statusImpressao = buscarStatusImpressao(idDocumento);
+            Boolean rdoReimpressao = statusImpressao == 2;
+
+            SRF1009 srf1009 = new SRF1009();
+            WindowUtils.createJDialog(srf1009.getWindow(), srf1009);
+            srf1009.cancelar = () -> srf1009.dispose();
+            srf1009.chkDocumento.setValue(1);
+            srf1009.ctrAah01.setIdValue(idTipoDoc);
+            srf1009.txtNumInicialDoc.setValue(numDoc);
+            srf1009.txtNumFinalDoc.setValue(numDoc);
+            srf1009.chkSomenteDocumentoComProtocolo.setSelected(somenteComProtocolo);
+            srf1009.rdoReimpressao.setSelected(rdoReimpressao);
+            srf1009.btnMostrar.doClick()
+            srf1009.getWindow().setVisible(true);
+        }catch(Exception e) {
+            throw new ValidacaoException("Falha ao abrir tarefa de imprimir documentos: " + e.getMessage());
+        }
+    }
 
     private byte[] buscarDadosImpressao(Long idDocumento, String codTipoDoc) {
-        String caminhoRelatorio = buscarCaminhoRelatorio(codTipoDoc);
+        TableMap tmTipoDoc =  buscarInformacoesTipoDoc(codTipoDoc);
+        String caminhoRelatorio = tmTipoDoc.getString("aah01formRelDoc");
+        if(caminhoRelatorio == null || caminhoRelatorio.isEmpty()) throw new ValidacaoException("Não foi encontrado relatório de impressão no tipo de documento " + codTipoDoc);
+
         String json = "{\"nome\":\""+caminhoRelatorio+"\",\"filtros\":{\"eaa01id\":"+idDocumento+"}}"
 
         ObjectMapper mapper = new ObjectMapper();
         JsonNode obj = mapper.readTree(json);
         return HttpRequest.create().controllerEndPoint("relatorio").methodEndPoint("gerarRelatorio").parseBody(obj).post().getResponseBody()
     }
-    private String buscarCaminhoRelatorio(String codTipoDoc){
-        String sql = "SELECT aah01formRelDoc FROM aah01 WHERE aah01codigo = '" + codTipoDoc + "'";
+    private TableMap buscarInformacoesTipoDoc(String codTipoDoc){
+        String sql = "SELECT aah01id, aah01formRelDoc FROM aah01 WHERE aah01codigo = '" + codTipoDoc + "'";
 
         TableMap tmTipoDoc = executarConsulta(sql)[0];
 
-        if(tmTipoDoc.size() == 0) throw new ValidacaoException("Não foi encontrado relatório de impressão no tipo de documento " + codTipoDoc);
+        if(tmTipoDoc.size() == 0) throw new ValidacaoException("Não foi encontrado registros para o tipo de documento " + codTipoDoc);
 
-        return tmTipoDoc.getString("aah01formRelDoc");
+        return tmTipoDoc;
+    }
+    private buscarStatusImpressao(Long idDocumento){
+        String sql = "SELECT eaa01statusImpr FROM eaa01 WHERE eaa01id = " + idDocumento;
+        TableMap tmDoc = executarConsulta(sql)[0];
+        Integer statusImpressao = tmDoc.getInteger("eaa01statusImpr");
+
+        return statusImpressao;
     }
 
     protected void enviarDadosParaImpressao(byte[] bytes) {
