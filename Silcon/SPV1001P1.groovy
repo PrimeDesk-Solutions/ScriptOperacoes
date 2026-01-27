@@ -15,6 +15,7 @@
  */
 package scripts
 
+import br.com.multitec.utils.ValidacaoException
 import br.com.multitec.utils.collections.TableMap
 import multitec.swing.components.autocomplete.MNavigation
 import multitec.swing.core.MultitecRootPanel
@@ -66,14 +67,12 @@ public class Script extends sam.swing.ScriptBase{
             buscarTitulosVencidosEntidade(codEntidade, idEmpresa);
 
             // Exibe caixa de dialogo na tela com a mensagem do cadastro da entidade
-            if (msgEnt != null) exibirTelaDeAtencaoComMensagemEntidade(msgEnt);
+            if (msgEnt != null && msgEnt != "") exibirTelaDeAtencaoComMensagemEntidade(msgEnt);
 
-            if(nvgAbe30codigo.getValue() != "000"){ // Não valida limite de crédito para condição á vista
-                // Verifica Limite de Crédito da entidade
-                TableMap tmAbe01 = buscarInformacoesLimiteCreditoEntidade(codEntidade, idEmpresa);
+            // Verifica Limite de Crédito da entidade
+            TableMap tmAbe01 = buscarInformacoesLimiteCreditoEntidade(codEntidade, idEmpresa);
 
-                if(tmAbe01.size() > 0 && tmAbe01.getTableMap("abe01json").getDate("dt_vcto_lim_credito") != null) verificarLimiteDeCredito(tmAbe01, codEntidade, idEmpresa);
-            }
+            if(tmAbe01.size() > 0 && tmAbe01.getTableMap("abe01json").getDate("dt_vcto_lim_credito") != null) verificarLimiteDeCredito(tmAbe01, codEntidade, idEmpresa);
 
             //txtCcb01obs.setValue("strTexto")
         }catch(Exception e){
@@ -210,7 +209,7 @@ public class Script extends sam.swing.ScriptBase{
 
         if(vlrLimiteCredito >= 0){
             if(dtVencLimCredito < dataAtual){ // Data de vencimento de crédito menor que data atual, significa expirou
-                interromper("Data de vencimento do limite de crédito do cliente venceu em " + dtVencLimCredito.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")).toString() + ".")
+                throw new ValidacaoException("Data de vencimento do limite de crédito do cliente venceu em " + dtVencLimCredito.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")).toString() + ".")
             }
 
             BigDecimal vlrDocumentosReceber = somarDocsAReceber(codEntidade, idEmpresa);
@@ -221,7 +220,7 @@ public class Script extends sam.swing.ScriptBase{
             // Calcula o valor total devedor
             BigDecimal valorTotalDevedor = vlrDocumentosReceber + valorDocumentosEmitidos;
 
-            // Se o total devedor do cliente for maior que o limite de crédito, significa que houve inconsistências e precisa se analisada
+            // Se o total devedor do cliente for maior que o limite de crédito, significa que houve inconsistências e precisa ser analisada
             if(valorTotalDevedor > vlrLimiteCredito){
                 if(exibirQuestao("Limite de crédito ultrapassado, necessario consultar o financeiro. Deseja continuar?")){
                     exibirInformacao("Pré-venda liberada com limite de crédito ultrapassado. Informe uma observação caso necessário.")
