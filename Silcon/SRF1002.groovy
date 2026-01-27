@@ -191,7 +191,7 @@ public class SRF1002 extends sam.swing.ScriptBase{
 
 
     private Long buscarIdEntidade(String codEntidade, Long idEmpresa){
-        String sql = "SELECT abe01id FROM abe01 WHERE abe01codigo = '" + codEntidade + "' AND abe01gc = " + idEmpresa.toString();
+        String sql = "SELECT abe01id FROM abe01 WHERE abe01codigo = '" + codEntidade + "' AND abe01gc = 1075797" //+ idEmpresa.toString();
         TableMap tmEntidade = executarConsulta(sql)[0];
         Long idEntidade = tmEntidade.getLong("abe01id");
 
