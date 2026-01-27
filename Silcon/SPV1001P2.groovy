@@ -5,7 +5,6 @@
     1. Verifica títulos vencidos:
        - Se houver, pergunta se deseja continuar.
     2. Validação do limite de crédito:
-       - Não valida limite de crédito se a condição de pagamento for Á Vista
        - Verifica data limite (se vencida, interrompe).
        - Calcula saldo devedor:
             - DAA01 (Docs a Receber): abb01quita = 0 AND daa01rp = 0
@@ -16,6 +15,7 @@
  */
 package scripts
 
+import br.com.multitec.utils.ValidacaoException
 import br.com.multitec.utils.collections.TableMap
 import multitec.swing.components.autocomplete.MNavigation
 import multitec.swing.core.MultitecRootPanel
@@ -50,7 +50,8 @@ public class Script extends sam.swing.ScriptBase{
     @Override
     public void execute(MultitecRootPanel tarefa) {
         JButton btnConcluirVenda = getComponente("btnConcluirVenda");
-        btnConcluirVenda.addActionListener(e -> adicionarEventoBtnConcluir());
+        btnConcluirVenda.addActionListener(e -> validarLimiteCreditoEntidade());
+        adicionarEventoEntidade();
         adicionarEventoChkNFCe();
     }
     private void removerCondicaoDePagamento(){
@@ -60,6 +61,20 @@ public class Script extends sam.swing.ScriptBase{
 
 
         if(nomeEntidade.toUpperCase().contains("CONSUMIDOR")) nvgAbe30codigo.getNavigationController().setIdValue(null)
+    }
+    private void adicionarEventoEntidade(){
+        MNavigation nvgAbe01codigo = getComponente("nvgAbe01codigo");
+        nvgAbe01codigo.addFocusListener(new FocusListener() {
+            @Override
+            void focusGained(FocusEvent e) {}
+
+            @Override
+            void focusLost(FocusEvent e) {
+                if(nvgAbe01codigo.getValue() != null){
+                    validarLimiteCreditoEntidade();
+                }
+            }
+        })
     }
     private void adicionarEventoChkNFCe(){
         MRadioButton rdoNFCe65 = getComponente("rdoNFCe65");
@@ -88,7 +103,7 @@ public class Script extends sam.swing.ScriptBase{
             interromper(e.getMessage())
         }
     }
-    private void adicionarEventoBtnConcluir(){
+    private void validarLimiteCreditoEntidade(){
         try{
             MNavigation nvgAbe01codigo = getComponente("nvgAbe01codigo");
             String codEntidade = nvgAbe01codigo.getValue();
@@ -101,9 +116,8 @@ public class Script extends sam.swing.ScriptBase{
             // Verifica Limite de Crédito da entidade
             TableMap tmAbe01 = buscarInformacoesLimiteCreditoEntidade(codEntidade, idEmpresa);
 
-            if(nvgAbe30codigo.getValue() != "000"){ // Não valida limite de crédito para condição á vista
-                if(tmAbe01.size() > 0 && tmAbe01.getTableMap("abe01json").getDate("dt_vcto_lim_credito") != null) verificarLimiteDeCredito(tmAbe01, codEntidade, idEmpresa);
-            }
+            if(tmAbe01.size() > 0 && tmAbe01.getTableMap("abe01json").getDate("dt_vcto_lim_credito") != null) verificarLimiteDeCredito(tmAbe01, codEntidade, idEmpresa);
+
         }catch(Exception e){
             interromper(e.getMessage());
         }
@@ -139,7 +153,7 @@ public class Script extends sam.swing.ScriptBase{
 
         if(vlrLimiteCredito >= 0){
             if(dtVencLimCredito < dataAtual){ // Data de vencimento de crédito menor que data atual, significa expirou
-                interromper("Data de vencimento do limite de crédito do cliente venceu em " + dtVencLimCredito.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")).toString() + ".")
+                throw new ValidacaoException("Data de vencimento do limite de crédito do cliente venceu em " + dtVencLimCredito.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")).toString() + ".")
             }
 
             BigDecimal vlrDocumentosReceber = somarDocsAReceber(codEntidade, idEmpresa);
