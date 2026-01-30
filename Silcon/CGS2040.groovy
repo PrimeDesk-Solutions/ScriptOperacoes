@@ -87,33 +87,38 @@ public class Script extends sam.swing.ScriptBase {
         if (!exibirQuestao("Deseja atualizar os itens da lista nas demais tabelas de preço, considerando seus respectivos percentuais de ajustes?")) return;
         List<TableMap> listTmTabelas = buscarInformacoesTabelasPrecos();
 
-        for(tabela in listTmTabelas){
-            Long idTabela = tabela.getLong("abe40id");
-            BigDecimal percentAjuste = tabela.getBigDecimal_Zero("percentAjuste");
-            Integer ajuste = tabela.getInteger("ajuste");
+        if(listTmTabelas != null && listTmTabelas.size() > 0){
+            for(tabela in listTmTabelas){
+                Long idTabela = tabela.getLong("abe40id");
+                BigDecimal percentAjuste = tabela.getBigDecimal_Zero("percentAjuste");
+                Integer ajuste = tabela.getInteger("ajuste");
+                List<TableMap> idsItensTab = buscarItensTabela(idTabela);
 
-            if(percentAjuste.compareTo(new BigDecimal(0)) == 0) continue;
+                if(percentAjuste.compareTo(new BigDecimal(0)) == 0) continue;
 
-            for(abe4001 in sprItens){
-                Long idItem = abe4001.abe4001item.abm01id;
-                BigDecimal preco = abe4001.abe4001preco_Zero;
-                BigDecimal vlrAjuste = preco * percentAjuste / 100;
-                BigDecimal novoPreco;
+                for(abe4001 in sprItens){
+                    Long idItem = abe4001.abe4001item.abm01id;
+                    TableMap itemEncontrado = idsItensTab.stream().filter({f -> f.getLong("abe4001item") == idItem}).findFirst().orElse(null)
+                    if(itemEncontrado == null) interromper("teste")//inserirItemTabelaPreco(abe4001, idTabela);
+                    BigDecimal preco = abe4001.abe4001preco_Zero;
+                    BigDecimal vlrAjuste = preco * percentAjuste / 100;
+                    BigDecimal novoPreco;
 
-                if(preco.compareTo(new BigDecimal(0)) == 0) continue;
+                    if(preco.compareTo(new BigDecimal(0)) == 0) continue;
 
-                if(ajuste == 0){ // Somar ajuste
-                    novoPreco = preco + vlrAjuste
-                }else{
-                    novoPreco = preco - vlrAjuste;
+                    if(ajuste == 0){ // Somar ajuste
+                        novoPreco = preco + vlrAjuste
+                    }else{
+                        novoPreco = preco - vlrAjuste;
+                    }
+
+                    executarSalvarOuExcluir("UPDATE abe4001 SET abe4001preco = " + novoPreco + " WHERE abe4001tab = " + idTabela + " AND abe4001item = " + idItem);
+
                 }
-
-                executarSalvarOuExcluir("UPDATE abe4001 SET abe4001preco = " + novoPreco + " WHERE abe4001tab = " + idTabela + " AND abe4001item = " + idItem);
-
             }
-        }
 
-        exibirInformacao("Preços atualizados com sucesso!");
+            exibirInformacao("Preços atualizados com sucesso!");
+        }
     }
     private void atualizarPrecoSemDesconto(){
         MSpread sprAbe4001s = getComponente("sprAbe4001s");
@@ -138,7 +143,42 @@ public class Script extends sam.swing.ScriptBase {
             }
         }
     }
+    private void inserirItemTabelaPreco(Abe4001 abe4001, Long idTabela){
+        Long idItem = abe4001.abe4001item.abm01id;
+        Long idCondPgto = abe4001.abe4001cp.abe30id;
+        BigDecimal txDesc = abe4001.abe4001txDesc_Zero;
+        BigDecimal qtdMax = abe4001.abe4001qtMax_Zero;
+        BigDecimal preco = abe4001.abe4001preco_Zero;
+        BigDecimal txComis0 = abe4001.abe4001txComis0_Zero;
+        BigDecimal txComis1 = abe4001.abe4001txComis1_Zero;
+        BigDecimal txComis2 = abe4001.abe4001txComis2_Zero;
+        BigDecimal txComis3 = abe4001.abe4001txComis3_Zero;
+        BigDecimal txComis4 = abe4001.abe4001txComis4_Zero;
 
+        String sql = " INSERT INTO abe4001 " +
+                        " VALUES " +
+                        " ( " +
+                        " NEXTVAL('DEFAULT_SEQUENCE'), " +
+                        idTabela + ", " +
+                        idItem + ", " +
+                        idCondPgto + ", " +
+                        txDesc + ", " +
+                        qtdMax + ", " +
+                        preco + ", " +
+                        txComis0 + ", " +
+                        txComis1 + ", " +
+                        txComis2 + ", " +
+                        txComis3 + ", " +
+                        txComis4 +  ", " +
+                        " NULL ) ";
+
+        executarSalvarOuExcluir(sql);
+    }
+    private List<TableMap> buscarItensTabela(Long idTabela){
+        String sql = "SELECT abe4001item FROM abe4001 WHERE abe4001tab = " + idTabela;
+
+        return executarConsulta(sql);
+    }
     private List<TableMap> buscarInformacoesTabelasPrecos() {
         String sql = "  SELECT abe40id, CAST(abe40camposCustom ->> 'percent_ajuste' AS NUMERIC(18,6)) AS percentAjuste, CAST(abe40camposCustom ->> 'ajuste_novo_preco' AS INTEGER) AS ajuste " +
                 " FROM abe40 " +

@@ -107,6 +107,7 @@ public class Script extends sam.swing.ScriptBase{
 
             Long idVenda = jsonCcb01.getLong("ccb01id");
             Integer numVenda = jsonCcb01.getInteger("ccb01num");
+            String nomeEntidade = jsonCcb01.getString("abe01nome");
 
             byte[] pdfBytes = buscarDadosPDF(idVenda);
             String caminhoArquivo = txtCaminho.getValue();
@@ -118,7 +119,7 @@ public class Script extends sam.swing.ScriptBase{
             if (!Files.exists(diretorio) || !Files.isDirectory(diretorio))
                 throw new ValidacaoException("O caminho informado não é um diretório válido.");
 
-            String nomeArquivo = "Venda_" + numVenda + ".pdf";
+            String nomeArquivo = "Orçamento-" + numVenda + "-" + nomeEntidade + ".pdf";
             Path caminhoPdf = diretorio.resolve(nomeArquivo);
 
             Files.write(caminhoPdf, pdfBytes);
