@@ -50,7 +50,7 @@ public class Script extends sam.swing.ScriptBase{
         JButton btnIniciarVenda = getComponente("btnIniciarVenda");
         //JButton btnAtivarVendedor = getComponente("btnAtivarVendedor");
 
-        btnIniciarVenda.addActionListener(e -> adicionarEventoBtnIniciar())
+//        btnIniciarVenda.addActionListener(e -> adicionarEventoBtnIniciar())
         //btnAtivarVendedor.addActionListener(e -> buscarTitulosVencidosEntidade())
     }
 
@@ -94,10 +94,10 @@ public class Script extends sam.swing.ScriptBase{
             TableMap totalTituloVencido = executarConsulta(sql)[0];
 
             if(totalTituloVencido.getBigDecimal_Zero("totDoc") > 0 ){
-                if(!exibirQuestao("Constam títulos vencidos para esse cliente, necessário consultar financeiro. Deseja continuar?")) interromper("Operação Cancelada.")
+                if(!exibirQuestao("Constam títulos vencidos para esse cliente, necessário consultar financeiro. Deseja continuar?")) throw new ValidacaoException("Operação Cancelada.")
             }
         }catch(Exception e){
-            interromper(e.getMessage());
+            throw new ValidacaoException(e.getMessage());
         }
     }
 
