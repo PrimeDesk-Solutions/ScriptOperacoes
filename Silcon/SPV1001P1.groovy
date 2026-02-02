@@ -112,7 +112,7 @@ public class Script extends sam.swing.ScriptBase{
 
     private void exibirTelaDeAtencaoComMensagemEntidade(String msg){
 
-        String caminhoImagem = "H:/Server/homes/Sam4/imagens/atencao.png";
+        String caminhoImagem = "H:/Sam4/imagens/atencao.png";
 
         // Caixa de Mensagem
         JDialog dialog = new JDialog((Frame) null, "Mensagem de Alerta", true);
