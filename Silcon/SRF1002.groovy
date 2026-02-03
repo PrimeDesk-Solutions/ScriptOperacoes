@@ -22,28 +22,20 @@
 
 package scripts
 
-import br.com.multitec.utils.UiSqlColumn
-import br.com.multitec.utils.collections.TableMap
+import com.fasterxml.jackson.core.type.TypeReference
 import multitec.swing.components.autocomplete.MNavigation
 import multitec.swing.components.textfields.MTextArea
 import multitec.swing.core.MultitecRootPanel
 import multitec.swing.core.utils.WindowUtils
-import sam.swing.tarefas.scf.SCF0102
-import sam.swing.tarefas.srf.SRF1001
-import java.awt.event.FocusEvent
 import java.awt.event.FocusListener;
 import javax.swing.SwingUtilities
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.File;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.IOException
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter;
 import java.awt.event.ActionEvent
 import java.awt.event.ActionListener
 import java.awt.print.PrinterJob
@@ -59,26 +51,19 @@ import br.com.multitec.utils.ValidacaoException
 import br.com.multitec.utils.collections.TableMap
 import br.com.multitec.utils.http.HttpRequest
 import multitec.swing.components.spread.MSpread
-import multitec.swing.core.MultitecRootPanel
 import multitec.swing.core.dialogs.ErrorDialog
 import multitec.swing.core.dialogs.Messages
 import multitec.swing.request.WorkerRunnable
 import multitec.swing.request.WorkerSupplier
 import sam.swing.ScriptBase
-import sam.swing.tarefas.spv.SPV1001
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import multitec.swing.core.MultitecRootPanel;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
-import sam.model.entities.ea.Eaa0103;
-import sam.model.entities.ea.Eaa01;
-import sam.model.entities.ab.Abm01;
-import java.util.Comparator;
 import multitec.swing.core.dialogs.Messages;
 import multitec.swing.request.WorkerRequest;
 import multitec.swing.request.WorkerRunnable;
-import sam.swing.tarefas.srf.SRF1002;
 import sam.swing.tarefas.srf.SRF1009;
 import br.com.multitec.utils.UiSqlColumn;
 import multitec.swing.components.textfields.MTextFieldInteger;
@@ -88,19 +73,20 @@ import multitec.swing.components.textfields.MTextFieldString;
 public class SRF1002 extends sam.swing.ScriptBase{
     def strTexto = "";
     String obs = "";
-    Integer cancelou = 0;
     MultitecRootPanel tarefa;
-    public Runnable  windowLoadOriginal;
+    public Runnable windowLoadOriginal;
 
     @Override
     public void execute(MultitecRootPanel tarefa) {
         this.tarefa = tarefa;
         tarefa.getWindow().getJMenuBar().getMnuArquivo().getMniCancelar().addActionListener(mnu -> this.adicionaEventoESC(mnu));
-        criarMenu("Impressão", "Imprimir Documento", { btnImprimirPressed() }, null);
         this.windowLoadOriginal = tarefa.windowLoad ;
         tarefa.windowLoad = {novoWindowLoad()};
         adicionaEventoPCD();
-        adicionaBotãoImprimirDanfe();
+        adicionaBotaoImprimirDanfe();
+    }
+    protected void adicionaEventoESC(ActionEvent evt) {
+        if(!exibirQuestao("Deseja realmente sair sem SALVAR?")) interromper("Por favor salvar antes de SAIR.");
     }
     protected void novoWindowLoad(){
         this.windowLoadOriginal.run();
@@ -117,34 +103,8 @@ public class SRF1002 extends sam.swing.ScriptBase{
             return uiSqlColumn;
         };
     }
-    private void adicionaBotãoImprimirDanfe(){
-        JPanel panel7 = getComponente("panel7");
-        def tela = tarefa.getWindow();
-        tela.setBounds((int) tela.getBounds().x, (int) tela.getBounds().y, (int) tela.getBounds().width, (int) tela.getBounds().height + 40);
-
-        def btnImprimir = new JButton();
-        btnImprimir.setText("Imprimir");
-
-
-        // X    Y    W  H
-        btnImprimir.setBounds(110, 100, 160, 25);
-        panel7.add(btnImprimir);
-
-        panel7.setLayout(null);
-
-        panel7.revalidate();
-        panel7.repaint();
-
-        btnImprimir.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                btnImprimirPressed();
-            }
-        });
-    }
     private void adicionaEventoPCD(){
         MNavigation nvgAbd01codigo = getComponente("nvgAbd01codigo");
-        Long idEmpresa = obterEmpresaAtiva().getAac10id();
-        MTextArea txtEaa01obsUsoInt = getComponente("txtEaa01obsUsoInt");
 
         nvgAbd01codigo.addFocusListener(new FocusListener() {
             public void focusGained(FocusEvent e) {};
@@ -154,74 +114,20 @@ public class SRF1002 extends sam.swing.ScriptBase{
                 String codEntidade = nvgAbe01codigo.getValue();
 
                 if(codEntidade != null) {
-                    String msgEnt = buscarMensagemEntidade(codEntidade, idEmpresa);
-                    if (msgEnt != null) exibirTelaDeAtencaoComMensagemEntidade(msgEnt);
+                    Long idEntidade = buscarIdEntidade(codEntidade);
+                    String msgEnt = buscarMensagemEntidade(idEntidade);
 
-                    // Soma de Titulos Vencidos
-                    TableMap totalTituloVencido = buscarTitulosVencidosEntidade(codEntidade, idEmpresa);
-                    if(totalTituloVencido.getBigDecimal_Zero("totDoc") > 0) exibirCaixaDeDialogoTituloVencido(tarefa); // exibe a caixa de dialogo para observações
+                    // Exibe caixa de dialogo na tela com a mensagem do cadastro da entidade
+                    if (msgEnt != null && msgEnt != "") exibirTelaDeAtencaoComMensagemEntidade(msgEnt);
 
-                    // Verifica Limite de Crédito da entidade
-                    TableMap tmAbe01 = buscarInformacoesLimiteCreditoEntidade(codEntidade, idEmpresa);
+                    // Busca os titulos vencidos da entidade
+                    buscarTitulosVencidosEntidade(idEntidade);
 
-                    if(tmAbe01.size() > 0 && tmAbe01.getTableMap("abe01json").getDate("dt_vcto_lim_credito") != null) verificarLimiteDeCreditoIniciar(tmAbe01, codEntidade, idEmpresa, tarefa);
-
-                    txtEaa01obsUsoInt.setValue(strTexto);
                 }
             }
         });
     }
-    protected void adicionaEventoESC(ActionEvent evt) {
-        if(!exibirQuestao("Deseja realmente sair sem SALVAR?")) interromper("Por favor salvar antes de SAIR.");
-    }
-    private TableMap buscarTitulosVencidosEntidade(String codEntidade, Long idEmpresa){
-        Long idEntidade = buscarIdEntidade(codEntidade, idEmpresa);
-
-        String sql = " SELECT SUM(daa01valor) AS totDoc " +
-                " FROM daa01 " +
-                " INNER JOIN abb01 ON abb01id = daa01central " +
-                " WHERE daa01rp = 0 " +
-                " AND abb01quita = 0 " +
-                " AND daa01dtVctoR < current_date " +
-                " AND abb01ent = " + idEntidade.toString() +
-                " AND daa01gc = " + idEmpresa.toString();
-
-        return executarConsulta(sql)[0]
-    }
-
-
-    private Long buscarIdEntidade(String codEntidade, Long idEmpresa){
-        String sql = "SELECT abe01id FROM abe01 WHERE abe01codigo = '" + codEntidade + "' AND abe01gc = 1075797" //+ idEmpresa.toString();
-        TableMap tmEntidade = executarConsulta(sql)[0];
-        Long idEntidade = tmEntidade.getLong("abe01id");
-
-        return idEntidade;
-    }
-
-    private void exibirCaixaDeDialogoTituloVencido(MultitecRootPanel tarefa){
-        def swing = new groovy.swing.SwingBuilder();
-        def lblTexto;
-        def txtArea;
-        if(exibirQuestao("Constam títulos vencidos para esse cliente, necessário consultar financeiro. Deseja continuar?")){
-            swing.edt {
-                dialog(title:"Observação de Aprovação", size:[500,250], defaultCloseOperation:javax.swing.JFrame.DISPOSE_ON_CLOSE, show:true, modal:true, locationRelativeTo:null) {
-                    borderLayout()
-                    lblTexto = label(text:"Consta títulos vencidos. Informe Autorizador.", constraints: java.awt.BorderLayout.NORTH)
-                    scrollPane(){
-                        txtArea = textArea(text:"", constraints:java.awt.BorderLayout.CENTER, rows:50, columns:65)
-                    }
-                    button(text:'Ok', actionPerformed: {strTexto = txtArea.text; dispose()}, constraints:java.awt.BorderLayout.SOUTH)
-                }
-            }
-        }else{
-            exibirInformacao("Processo Interrompido");
-            tarefa.dispose(); // fecha a tarefa
-        }
-
-    }
-
-    private String buscarMensagemEntidade(String codEntidade, Long idEmpresa){
-        Long idEntidade = buscarIdEntidade(codEntidade, idEmpresa);
+    private String buscarMensagemEntidade(Long idEntidade){
         String sql = "SELECT abe02obsUsoInt FROM abe02 WHERE abe02ent = " + idEntidade.toString();
 
         TableMap tmEntidade =  executarConsulta(sql)[0]
@@ -231,7 +137,7 @@ public class SRF1002 extends sam.swing.ScriptBase{
 
     private void exibirTelaDeAtencaoComMensagemEntidade(String msg){
 
-        String caminhoImagem = "H:/Server/homes/Sam4/imagens/atencao.png";
+        String caminhoImagem = "H:/Sam4/imagens/atencao.png";
 
         // Caixa de Mensagem
         JDialog dialog = new JDialog((Frame) null, "Mensagem de Alerta", true);
@@ -245,7 +151,7 @@ public class SRF1002 extends sam.swing.ScriptBase{
 
         // --- Top: título centralizado em vermelho
         JLabel titulo = new JLabel("*** A T E N Ç Ã O ***", SwingConstants.CENTER);
-        titulo.setFont(new Font("Arial", Font.BOLD, 18));
+        titulo.setFont(new Font("Arial", Font.BOLD, 25));
         titulo.setForeground(Color.RED);
 
         // Painel para manter título com pequena margem
@@ -272,25 +178,25 @@ public class SRF1002 extends sam.swing.ScriptBase{
         south.setBorder(new EmptyBorder(10, 10, 10, 10));
 
         // Carrega imagem
-        String imagemPath = caminhoImagem;
-        JLabel imagemLabel = new JLabel();
-        imagemLabel.setAlignmentX(Component.CENTER_ALIGNMENT); // centralizar horizontalmente
-        try {
-            BufferedImage img = ImageIO.read(new File(imagemPath));
-            // opcional: redimensionar mantendo proporção para largura fixa
-            int targetWidth = 220;
-            int w = img.getWidth();
-            int h = img.getHeight();
-            int targetHeight = (targetWidth * h) / w;
-            Image scaled = img.getScaledInstance(targetWidth, targetHeight, Image.SCALE_SMOOTH);
-            imagemLabel.setIcon(new ImageIcon(scaled));
-        } catch (IOException e) {
-            // se não encontrar, mostra texto substituto
-            imagemLabel.setText("Imagem não encontrada: " + imagemPath);
-            imagemLabel.setFont(new Font("Arial", Font.ITALIC, 12));
-        }
-        south.add(imagemLabel);
-        south.add(Box.createRigidArea(new Dimension(0, 8)));
+//        String imagemPath = caminhoImagem;
+//        JLabel imagemLabel = new JLabel();
+//        imagemLabel.setAlignmentX(Component.CENTER_ALIGNMENT); // centralizar horizontalmente
+//        try {
+//            BufferedImage img = ImageIO.read(new File(imagemPath));
+//            // opcional: redimensionar mantendo proporção para largura fixa
+//            int targetWidth = 220;
+//            int w = img.getWidth();
+//            int h = img.getHeight();
+//            int targetHeight = (targetWidth * h) / w;
+//            Image scaled = img.getScaledInstance(targetWidth, targetHeight, Image.SCALE_SMOOTH);
+//            imagemLabel.setIcon(new ImageIcon(scaled));
+//        } catch (IOException e) {
+//            // se não encontrar, mostra texto substituto
+//            imagemLabel.setText("Imagem não encontrada: " + imagemPath);
+//            imagemLabel.setFont(new Font("Arial", Font.ITALIC, 12));
+//        }
+//        south.add(imagemLabel);
+//        south.add(Box.createRigidArea(new Dimension(0, 8)));
 
         // Botão OK centralizado
         JButton btnOk = new JButton("OK");
@@ -312,136 +218,110 @@ public class SRF1002 extends sam.swing.ScriptBase{
         dialog.setLocationRelativeTo(null); // centraliza na tela
         dialog.setVisible(true);
     }
+    private Long buscarIdEntidade(String codEntidade){
+        String sql = "SELECT abe01id FROM abe01 WHERE abe01codigo = '" + codEntidade + "' AND abe01gc = 1075797" //+ idEmpresa.toString();
+        TableMap tmEntidade = executarConsulta(sql)[0];
+        Long idEntidade = tmEntidade.getLong("abe01id");
 
-    private TableMap buscarInformacoesLimiteCreditoEntidade(String codEntidade, Long idEmpresa) {
-        Long idEntidade = buscarIdEntidade(codEntidade, idEmpresa);
-
-        String sql = "SELECT abe01json FROM abe01 WHERE abe01id = " + idEntidade.toString();
-
-        return executarConsulta(sql)[0];
+        return idEntidade;
     }
-
-    private void verificarLimiteDeCreditoIniciar(TableMap jsonAbe01, String codEntidade, Long idEmpresa, MultitecRootPanel tarefa){
-
-
-        BigDecimal vlrLimiteCredito = jsonAbe01.getTableMap("abe01json").getBigDecimal_Zero("vlr_lim_credito");
-        LocalDate dataAtual = LocalDate.now();
-        LocalDate dtVencLimCredito = jsonAbe01.getTableMap("abe01json").getDate("dt_vcto_lim_credito");
-        def swing = new groovy.swing.SwingBuilder();
-        def lblTexto;
-        def txtArea;
-
-        if(vlrLimiteCredito >= 0){
-            if(dtVencLimCredito < dataAtual){ // Data de vencimento de crédito menor que data atual, significa expirou
-                interromper("Data de vencimento do limite de crédito do cliente venceu em " + dtVencLimCredito.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")).toString() + ".")
-            }
-
-            BigDecimal vlrDocumentosReceber = somarDocsAReceber(codEntidade, idEmpresa);
-
-            // Soma todos os documentos emitidos para a entidade com SCF = 2-Batch
-            BigDecimal valorDocumentosEmitidos = buscarSomaDocumentosEmitidos(codEntidade, idEmpresa);
-
-            // Calcula o valor total devedor
-            BigDecimal valorTotalDevedor = vlrDocumentosReceber + valorDocumentosEmitidos;
-
-            // Se o total devedor do cliente for maior que o limite de crédito, significa que houve inconsistências e precisa se analisada
-            if(valorTotalDevedor > vlrLimiteCredito){
-                if(exibirQuestao("Limite de crédito ultrapassado, necessario consultar o financeiro. Deseja continuar?")){
-                    swing.edt {
-                        dialog(title:"Observação de Aprovação", size:[500,250], defaultCloseOperation:javax.swing.JFrame.DISPOSE_ON_CLOSE, show:true, modal:true, locationRelativeTo:null) {
-                            borderLayout()
-                            lblTexto = label(text:"Limite de crédito ultrapassado.", constraints: java.awt.BorderLayout.NORTH)
-                            scrollPane(){
-                                txtArea = textArea(text:"", constraints:java.awt.BorderLayout.CENTER, rows:50, columns:65)
-                            }
-                            button(text:'Ok', actionPerformed: {strTexto = strTexto + "\n" + txtArea.text; dispose()}, constraints:java.awt.BorderLayout.SOUTH)
+    private void buscarTitulosVencidosEntidade(Long idEntidade){
+        try{
+            TableMap body = new TableMap()
+            body.put("abe01id",idEntidade)
+            WorkerRequest.create(tarefa.getWindow())
+                    .initialText("Buscando Limite de Crédito")
+                    .dialogVisible(false)
+                    .controllerEndPoint("servlet")
+                    .methodEndPoint("run")
+                    .param("name", "Silcon.servlet.Buscar_Titulos_Vencidos_Entidade")
+                    .header("ignore-body-decrypt", "true")
+                    .parseBody(body)
+                    .success((response) -> {
+                        Boolean contemTituloVencido = response.parseResponse(new TypeReference<Boolean>(){});
+                        if(contemTituloVencido && !exibirQuestao("Constam títulos vencidos para esse cliente, necessário consultar financeiro. Deseja continuar?")){
+                            throw new ValidacaoException("Operação Cancelada.")
+                        }else{
+                            if(contemTituloVencido) exibirInformacao("Insira uma observação, caso necessário.");
+                            verificarLimiteDeCredito(idEntidade)
                         }
-                    }
-                }else{
-                    exibirInformacao("Processo Interrompido");
-                    tarefa.dispose(); // fecha a tarefa
-
-                }
-            }
+                    })
+                    .post();
+        }catch(Exception err){
+            throw new ValidacaoException(err.getMessage());
         }
     }
-    private void verificarLimiteDeCreditoFechar(TableMap jsonAbe01, String codEntidade, Long idEmpresa){
+    private void verificarLimiteDeCredito(Long idEntidade){
+        TableMap body = new TableMap()
+        body.put("abe01id",idEntidade)
 
-        BigDecimal vlrLimiteCredito = jsonAbe01.getTableMap("abe01json").getBigDecimal_Zero("vlr_lim_credito");
-        LocalDate dataAtual = LocalDate.now();
-        LocalDate dtVencLimCredito = jsonAbe01.getTableMap("abe01json").getDate("dt_vcto_lim_credito");
-        def swing = new groovy.swing.SwingBuilder();
-        def lblTexto;
-        def txtArea;
-
-        if(vlrLimiteCredito >= 0){
-            if(dtVencLimCredito < dataAtual){ // Data de vencimento de crédito menor que data atual, significa expirou
-                interromper("Data de vencimento do limite de crédito do cliente venceu em " + dtVencLimCredito.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")).toString() + ".")
-            }
-
-            BigDecimal vlrDocumentosReceber = somarDocsAReceber(codEntidade, idEmpresa);
-
-            // Soma todos os documentos emitidos para a entidade com SCF = 2-Batch
-            BigDecimal valorDocumentosEmitidos = buscarSomaDocumentosEmitidos(codEntidade, idEmpresa);
-
-            // Calcula o valor total devedor
-            BigDecimal valorTotalDevedor = vlrDocumentosReceber + valorDocumentosEmitidos;
-
-            // Se o total devedor do cliente for maior que o limite de crédito, significa que houve inconsistências e precisa se analisada
-            if(valorTotalDevedor > vlrLimiteCredito){
-                if(exibirQuestao("Limite de crédito ultrapassado, necessario consultar o financeiro. Deseja continuar?")){
-                    swing.edt {
-                        dialog(title:"Observação de Aprovação", size:[500,250], defaultCloseOperation:javax.swing.JFrame.DISPOSE_ON_CLOSE, show:true, modal:true, locationRelativeTo:null) {
-                            borderLayout()
-                            lblTexto = label(text:"Limite de crédito ultrapassado.", constraints: java.awt.BorderLayout.NORTH)
-                            scrollPane(){
-                                txtArea = textArea(text:"", constraints:java.awt.BorderLayout.CENTER, rows:50, columns:65)
-                            }
-                            button(text:'Ok', actionPerformed: {strTexto = strTexto + "\n" + txtArea.text; dispose()}, constraints:java.awt.BorderLayout.SOUTH)
-                        }
+        WorkerRequest.create(tarefa.getWindow())
+                .initialText("Verificando Limite de Crédito")
+                .dialogVisible(false)
+                .controllerEndPoint("servlet")
+                .methodEndPoint("run")
+                .param("name", "Silcon.servlet.Verificar_Limite_Credito_Entidade")
+                .header("ignore-body-decrypt", "true")
+                .parseBody(body)
+                .success((response) -> {
+                    Boolean limiteCreditoExcedido = response.parseResponse(new TypeReference<Boolean>(){});
+                    if(limiteCreditoExcedido && !exibirQuestao("Limite de crédito ultrapassado, necessario consultar o financeiro. Deseja continuar?")){
+                        throw new ValidacaoException("Operação Cancelada.")
+                    }else{
+                        if(limiteCreditoExcedido) exibirInformacao("Insira uma observação, caso necessário.")
                     }
-                }else{
-                    interromper("Processo Interrompido");
-                }
+                })
+                .post();
+    }
+    private void adicionaBotaoImprimirDanfe(){
+        JPanel panel7 = getComponente("panel7");
+        def tela = tarefa.getWindow();
+        tela.setBounds((int) tela.getBounds().x, (int) tela.getBounds().y, (int) tela.getBounds().width, (int) tela.getBounds().height + 40);
+
+        def btnImprimir = new JButton();
+        btnImprimir.setText("Imprimir");
+
+        // X    Y    W  H
+        btnImprimir.setBounds(110, 100, 160, 25);
+        panel7.add(btnImprimir);
+
+        panel7.setLayout(null);
+
+        panel7.revalidate();
+        panel7.repaint();
+
+        btnImprimir.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                btnImprimirPressed();
             }
+        });
+    }
+    private void btnImprimirPressed() {
+        try {
+            TableMap documento = verificarDocumentoSalvo();
+            MNavigation nvgAah01codigo = getComponente("nvgAah01codigo");
+            String codTipoDoc = nvgAah01codigo.getValue();
+
+            if(documento.isEmpty()) interromper("Necessário salvar o documento antes de imprimir.");
+
+            Long idDocumento = documento.getLong("eaa01id");
+
+            if(!codTipoDoc.equals("04") && !codTipoDoc.equals("16")){
+                WorkerSupplier.create(this.tarefa.getWindow(), {
+                    return buscarDadosImpressao(idDocumento, codTipoDoc);
+                })
+                        .initialText("Imprimindo Documento")
+                        .dialogVisible(true)
+                        .success({ bytes ->
+                            enviarDadosParaImpressao(bytes);
+                        })
+                        .start();
+            }else{
+                abrirTelaImpressaoDocs(codTipoDoc, idDocumento);
+            }
+        } catch (Exception err) {
+            ErrorDialog.defaultCatch(this.tarefa.getWindow(), err);
         }
-    }
-
-    private BigDecimal somarDocsAReceber(String codEntidade, Long idEmpresa){
-        Long idEntidade = buscarIdEntidade(codEntidade, idEmpresa);
-
-        String sql = " SELECT SUM(daa01valor) AS valor" +
-                " FROM daa01 " +
-                " INNER JOIN abb01 ON abb01id = daa01central " +
-                " WHERE abb01quita = 0 " +
-                " AND daa01rp = 0 " +
-                " AND abb01ent = " + idEntidade.toString() +
-                " AND daa01gc = " + idEmpresa;
-
-        TableMap tmValor = executarConsulta(sql)[0];
-
-        return tmValor.getBigDecimal_Zero("valor");
-    }
-
-    private BigDecimal buscarSomaDocumentosEmitidos(String codEntidade, Long idEmpresa){
-        Long idEntidade = buscarIdEntidade(codEntidade, idEmpresa);
-
-        String sql = " SELECT SUM(eaa01totDoc) AS totalGeral " +
-                " FROM eaa01 " +
-                " INNER JOIN abb01 ON abb01id = eaa01central " +
-                " INNER JOIN abd01 ON abd01id = eaa01pcd " +
-                " LEFT JOIN abb10 ON abb10id = abd01opercod " +
-                " WHERE abb10tipoCod = 1 " +
-                " AND eaa01esMov = 1 " +
-                " AND eaa01clasDoc = 1 " +
-                " AND eaa01cancData IS NULL " +
-                " AND eaa01iSCF = 2 " +
-                " AND abb01ent = " + idEntidade.toString() +
-                " AND eaa01gc = " + idEmpresa.toString();
-
-        TableMap tmValorDocs = executarConsulta(sql)[0];
-
-        return tmValorDocs.getBigDecimal_Zero("totalGeral")
     }
     private TableMap verificarDocumentoSalvo(){
         def txtAbb01num = getComponente("txtAbb01num");
@@ -460,33 +340,6 @@ public class SRF1002 extends sam.swing.ScriptBase{
                                 "AND aah01codigo = '"+ tipoDoc + "' "+
                                 "AND abb01num = "+numDoc+ " "+
                                 "AND eaa01eg = "+idEmpresa);
-    }
-    private void btnImprimirPressed() {
-        try {
-            TableMap documento = verificarDocumentoSalvo();
-            MNavigation nvgAah01codigo = getComponente("nvgAah01codigo");
-            String codTipoDoc = nvgAah01codigo.getValue();
-
-            if(documento.isEmpty()) interromper("Necessário salvar o documento antes de imprimir.");
-
-            Long idDocumento = documento.getLong("eaa01id");
-
-            if(!codTipoDoc.equals("04") && !codTipoDoc.equals("16")){
-                WorkerSupplier.create(this.tarefa.getWindow(), {
-                    return buscarDadosImpressao(idDocumento, codTipoDoc);
-                })
-                .initialText("Imprimindo Documento")
-                .dialogVisible(true)
-                .success({ bytes ->
-                    enviarDadosParaImpressao(bytes);
-                })
-                .start();
-            }else{
-                abrirTelaImpressaoDocs(codTipoDoc, idDocumento);
-            }
-        } catch (Exception err) {
-            ErrorDialog.defaultCatch(this.tarefa.getWindow(), err);
-        }
     }
     private abrirTelaImpressaoDocs(String codTipoDoc, Long idDocumento){
         try{
@@ -515,7 +368,6 @@ public class SRF1002 extends sam.swing.ScriptBase{
             throw new ValidacaoException("Falha ao abrir tarefa de imprimir documentos: " + e.getMessage());
         }
     }
-
     private byte[] buscarDadosImpressao(Long idDocumento, String codTipoDoc) {
         TableMap tmTipoDoc =  buscarInformacoesTipoDoc(codTipoDoc);
         String caminhoRelatorio = tmTipoDoc.getString("aah01formRelDoc");
@@ -543,7 +395,6 @@ public class SRF1002 extends sam.swing.ScriptBase{
 
         return statusImpressao;
     }
-
     protected void enviarDadosParaImpressao(byte[] bytes) {
         try {
             if(bytes == null || bytes.length == 0) {
@@ -575,7 +426,6 @@ public class SRF1002 extends sam.swing.ScriptBase{
             ErrorDialog.defaultCatch(this.tarefa.getWindow(), err, "Erro ao enviar dados para impressão.");
         }
     }
-
     protected PrintService escolherImpressora() {
         PrintService myService = null;
 
@@ -620,18 +470,7 @@ public class SRF1002 extends sam.swing.ScriptBase{
 
     @Override
     public void preSalvar(boolean salvo) {
-        MNavigation nvgAbd01codigo = getComponente("nvgAbd01codigo");
-        Long idEmpresa = obterEmpresaAtiva().getAac10id();
-        MTextArea txtEaa01obsUsoInt = getComponente("txtEaa01obsUsoInt");
-        MNavigation nvgAbe01codigo = getComponente("nvgAbe01codigo");
-        String codEntidade = nvgAbe01codigo.getValue();
 
-        // Verifica Limite de Crédito da entidade
-        TableMap tmAbe01 = buscarInformacoesLimiteCreditoEntidade(codEntidade, idEmpresa);
-
-        if(tmAbe01.size() > 0 && tmAbe01.getTableMap("abe01json").getDate("dt_vcto_lim_credito") != null) verificarLimiteDeCreditoFechar(tmAbe01, codEntidade, idEmpresa);
-
-        txtEaa01obsUsoInt.setValue(strTexto);
     }
 
     @Override
