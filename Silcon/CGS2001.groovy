@@ -17,7 +17,7 @@ class CGS2001 extends ScriptBase{
         MTextArea txtabe01obs = getComponente("txtabe01obs");
         TableMap camposCustomUser = buscarCamposCustomUser(obterUsuarioLogado().getAab10id());
 
-        if(camposCustomUser.getTableMap("aab10camposcustom") != null && camposCustomUser.getTableMap("aab10camposcustom").getInteger("vendedor") == 1) txtabe01obs.setVisible(false)
+        if(camposCustomUser.getTableMap("aab10camposcustom") != null && camposCustomUser.getTableMap("aab10camposcustom").getInteger("setor") == 2) txtabe01obs.setVisible(false)
     }
 
     private TableMap buscarCamposCustomUser(Long idUser){
