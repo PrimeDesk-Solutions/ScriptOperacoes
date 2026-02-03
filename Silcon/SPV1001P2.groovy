@@ -17,8 +17,10 @@ package scripts
 
 import br.com.multitec.utils.ValidacaoException
 import br.com.multitec.utils.collections.TableMap
+import com.fasterxml.jackson.core.type.TypeReference
 import multitec.swing.components.autocomplete.MNavigation
 import multitec.swing.core.MultitecRootPanel
+import multitec.swing.request.WorkerRequest
 
 import javax.swing.JButton;
 
@@ -44,37 +46,55 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.function.Consumer;
 import multitec.swing.components.MRadioButton;
+import multitec.swing.request.WorkerRequest;
+import multitec.swing.request.WorkerRunnable;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 public class Script extends sam.swing.ScriptBase{
     public Consumer exibirRegistroPadrao;
+    private ActionListener[] actionEventOriginal;
+    MultitecRootPanel panel;
+
     @Override
     public void execute(MultitecRootPanel tarefa) {
-        JButton btnConcluirVenda = getComponente("btnConcluirVenda");
-        btnConcluirVenda.addActionListener(e -> validarLimiteCreditoEntidade());
-        adicionarEventoEntidade();
+        this.panel = tarefa;
+        //adicionarEventoEntidade();
+        inserirBancoDefault()
         adicionarEventoChkNFCe();
+        adicionarEventoBtnConcluir();
     }
-    private void removerCondicaoDePagamento(){
-        MNavigation nvgAbe01na = getComponente("nvgAbe01na");
-        String nomeEntidade = nvgAbe01na.getValue();
-        MNavigation nvgAbe30codigo = getComponente("nvgAbe30codigo");
+//    private void adicionarEventoEntidade(){
+//        MNavigation nvgAbe01codigo = getComponente("nvgAbe01codigo");
+//        nvgAbe01codigo.addFocusListener(new FocusListener() {
+//            @Override
+//            void focusGained(FocusEvent e) {}
+//
+//            @Override
+//            void focusLost(FocusEvent e) {
+//                if(nvgAbe01codigo.getValue() != null){
+//                    verificarEntidade(null)
+//                }
+//            }
+//        })
+//    }
+    private inserirBancoDefault(){
+        TableMap jsonAab10 = buscarCamposCustomUser();
+        MNavigation nvgAbf01codigo = getComponente("nvgAbf01codigo");
+        Long idEmpresa = obterEmpresaAtiva().getAac10id();
 
-
-        if(nomeEntidade.toUpperCase().contains("CONSUMIDOR")) nvgAbe30codigo.getNavigationController().setIdValue(null)
-    }
-    private void adicionarEventoEntidade(){
-        MNavigation nvgAbe01codigo = getComponente("nvgAbe01codigo");
-        nvgAbe01codigo.addFocusListener(new FocusListener() {
-            @Override
-            void focusGained(FocusEvent e) {}
-
-            @Override
-            void focusLost(FocusEvent e) {
-                if(nvgAbe01codigo.getValue() != null){
-                    validarLimiteCreditoEntidade();
-                }
+        if(jsonAab10 != null && jsonAab10.size() > 0 ){
+            if(jsonAab10.getTableMap("aab10camposcustom").getInteger("setor") == 3 && idEmpresa == 1075797 ){ // Matriz
+                nvgAbf01codigo.getNavigationController().setIdValue(322714)
+            }else if(jsonAab10.getTableMap("aab10camposcustom").getInteger("setor") == 3 && idEmpresa == 2116598){ // Filial
+                nvgAbf01codigo.getNavigationController().setIdValue(36288893)
             }
-        })
+        }
+    }
+    private buscarCamposCustomUser(){
+        Long idUser = obterUsuarioLogado().getAab10id();
+        String sql = "SELECT aab10camposCustom FROM aab10 WHERE aab10id = " + idUser.toString();
+
+        return executarConsulta(sql)[0]
     }
     private void adicionarEventoChkNFCe(){
         MRadioButton rdoNFCe65 = getComponente("rdoNFCe65");
@@ -87,7 +107,7 @@ public class Script extends sam.swing.ScriptBase{
 
             @Override
             void focusLost(FocusEvent e) {
-               alterarNumeroDeVias(2, true)
+                alterarNumeroDeVias(2, true)
             }
         })
 
@@ -103,113 +123,190 @@ public class Script extends sam.swing.ScriptBase{
             interromper(e.getMessage())
         }
     }
-    private void validarLimiteCreditoEntidade(){
+    private void adicionarEventoBtnConcluir(){
+        JButton btnConcluirVenda = getComponente("btnConcluirVenda");
+        actionEventOriginal = btnConcluirVenda.getActionListeners(); // Armazena os eventos default
+
+        for(evento in actionEventOriginal){
+            btnConcluirVenda.removeActionListener(evento); // Remove os evento default do botão
+        }
+
+        btnConcluirVenda.addActionListener(new ActionListener() {
+            @Override
+            void actionPerformed(ActionEvent e) {
+                verificarEntidade(e);
+            }
+        })
+    }
+    private void verificarEntidade(ActionEvent e){
         try{
             MNavigation nvgAbe01codigo = getComponente("nvgAbe01codigo");
+            MNavigation nvgAbe01na = getComponente("nvgAbe01na");
             String codEntidade = nvgAbe01codigo.getValue();
-            Long idEmpresa = obterEmpresaAtiva().getAac10id();
-            MNavigation nvgAbe30codigo = getComponente("nvgAbe30codigo");
+            String nomeEntidade = nvgAbe01na.getValue();
+            Long idEntidade = buscarIdEntidade(codEntidade);
 
-            buscarTitulosVencidosEntidade(codEntidade, idEmpresa);
-            //removerCondicaoDePagamento();
+            if(nomeEntidade != null && nomeEntidade.toUpperCase() != "CONSUMIDOR"){
+                String msgEnt = buscarMensagemEntidade(idEntidade);
 
-            // Verifica Limite de Crédito da entidade
-            TableMap tmAbe01 = buscarInformacoesLimiteCreditoEntidade(codEntidade, idEmpresa);
+                // Exibe caixa de dialogo na tela com a mensagem do cadastro da entidade
+                if (msgEnt != null && msgEnt != "") exibirTelaDeAtencaoComMensagemEntidade(msgEnt);
 
-            if(tmAbe01.size() > 0 && tmAbe01.getTableMap("abe01json").getDate("dt_vcto_lim_credito") != null) verificarLimiteDeCredito(tmAbe01, codEntidade, idEmpresa);
-
-        }catch(Exception e){
-            interromper(e.getMessage());
-        }
-    }
-    private void buscarTitulosVencidosEntidade(String codEntidade, Long idEmpresa){
-        Long idEntidade = buscarIdEntidade(codEntidade, idEmpresa);
-
-        String sql = "SELECT SUM(daa01valor) AS totDoc " +
-                "FROM daa01 " +
-                "INNER JOIN abb01 ON abb01id = daa01central " +
-                "WHERE daa01rp = 0 " +
-                "AND abb01quita = 0 " +
-                "AND daa01dtVctoR < current_date " +
-                "AND abb01ent = " + idEntidade;
-        TableMap totalTituloVencido = executarConsulta(sql)[0];
-
-        if(totalTituloVencido.getBigDecimal_Zero("totDoc") > 0 ){
-            if(!exibirQuestao("Constam títulos vencidos, necessário consultar financeiro. Deseja continuar?")) interromper("Operação Cancelada.")
-        }
-    }
-    private TableMap buscarInformacoesLimiteCreditoEntidade(String codEntidade, Long idEmpresa) {
-        Long idEntidade = buscarIdEntidade(codEntidade, idEmpresa);
-
-        String sql = "SELECT abe01json FROM abe01 WHERE abe01id = " + idEntidade.toString();
-
-        return executarConsulta(sql)[0];
-    }
-    private void verificarLimiteDeCredito(TableMap jsonAbe01, String codEntidade, Long idEmpresa){
-
-        BigDecimal vlrLimiteCredito = jsonAbe01.getTableMap("abe01json").getBigDecimal_Zero("vlr_lim_credito");
-        LocalDate dataAtual = LocalDate.now();
-        LocalDate dtVencLimCredito = jsonAbe01.getTableMap("abe01json").getDate("dt_vcto_lim_credito");
-
-        if(vlrLimiteCredito >= 0){
-            if(dtVencLimCredito < dataAtual){ // Data de vencimento de crédito menor que data atual, significa expirou
-                throw new ValidacaoException("Data de vencimento do limite de crédito do cliente venceu em " + dtVencLimCredito.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")).toString() + ".")
-            }
-
-            BigDecimal vlrDocumentosReceber = somarDocsAReceber(codEntidade, idEmpresa);
-
-            // Soma todos os documentos emitidos para a entidade com SCF = 2-Batch
-            BigDecimal valorDocumentosEmitidos = buscarSomaDocumentosEmitidos(codEntidade, idEmpresa);
-
-            // Calcula o valor total devedor
-            BigDecimal valorTotalDevedor = vlrDocumentosReceber + valorDocumentosEmitidos;
-
-            // Se o total devedor do cliente for maior que o limite de crédito, significa que houve inconsistências e precisa se analisada
-            if(valorTotalDevedor > vlrLimiteCredito){
-                if(exibirQuestao("Limite de crédito ultrapassado, necessario consultar o financeiro. Deseja continuar?")){
-                    // prossegue a venda
-                }else{
-                    interromper("Processo Interrompido");
+                // Busca os titulos vencidos da entidade
+                buscarTitulosVencidosEntidade(idEntidade, e);
+            }else{
+                if(actionEventOriginal != null && actionEventOriginal.size() > 0){
+                    for(evento in actionEventOriginal){
+                        evento.actionPerformed(e) // Executa os eventos originais novamente
+                    }
                 }
             }
+        }catch(Exception err){
+            interromper(err.getMessage())
         }
     }
-    private BigDecimal somarDocsAReceber(String codEntidade, Long idEmpresa){
-        Long idEntidade = buscarIdEntidade(codEntidade, idEmpresa);
+    private String buscarMensagemEntidade(Long idEntidade){
+        String sql = "SELECT abe02obsUsoInt FROM abe02 WHERE abe02ent = " + idEntidade.toString();
 
-        String sql = " SELECT SUM(daa01valor) AS valor" +
-                " FROM daa01 " +
-                " INNER JOIN abb01 ON abb01id = daa01central " +
-                " WHERE abb01quita = 0 " +
-                " AND daa01rp = 0 " +
-                " AND abb01ent = " + idEntidade.toString() +
-                " AND daa01gc = " + idEmpresa;
+        TableMap tmEntidade =  executarConsulta(sql)[0]
 
-        TableMap tmValor = executarConsulta(sql)[0];
-
-        return tmValor.getBigDecimal_Zero("valor");
+        return tmEntidade.getString("abe02obsUsoInt");
     }
-    private BigDecimal buscarSomaDocumentosEmitidos(String codEntidade, Long idEmpresa){
-        Long idEntidade = buscarIdEntidade(codEntidade, idEmpresa);
+    private void exibirTelaDeAtencaoComMensagemEntidade(String msg){
 
-        String sql = " SELECT SUM(eaa01totDoc) AS totalGeral " +
-                " FROM eaa01 " +
-                " INNER JOIN abb01 ON abb01id = eaa01central " +
-                " INNER JOIN abd01 ON abd01id = eaa01pcd " +
-                " LEFT JOIN abb10 ON abb10id = abd01opercod " +
-                " WHERE abb10tipoCod = 1 " +
-                " AND eaa01esMov = 1 " +
-                " AND eaa01clasDoc = 1 " +
-                " AND eaa01cancData IS NULL " +
-                " AND eaa01iSCF = 2 " +
-                " AND abb01ent = " + idEntidade.toString() +
-                " AND eaa01gc = " + idEmpresa.toString();
+        String caminhoImagem = "H:/Sam4/imagens/atencao.png";
 
-        TableMap tmValorDocs = executarConsulta(sql)[0];
+        // Caixa de Mensagem
+        JDialog dialog = new JDialog((Frame) null, "Mensagem de Alerta", true);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        dialog.setResizable(false);
 
-        return tmValorDocs.getBigDecimal_Zero("totalGeral");
+        // Painel principal
+        JPanel content = new JPanel(new BorderLayout(10, 10));
+        content.setBorder(new EmptyBorder(8, 8, 8, 8)); // margem externa
+        dialog.setContentPane(content);
+
+        // --- Top: título centralizado em vermelho
+        JLabel titulo = new JLabel("*** A T E N Ç Ã O ***", SwingConstants.CENTER);
+        titulo.setFont(new Font("Arial", Font.BOLD, 25));
+        titulo.setForeground(Color.RED);
+
+        // Painel para manter título com pequena margem
+        JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.add(titulo, BorderLayout.CENTER);
+        content.add(topPanel, BorderLayout.NORTH);
+
+        // --- Centro: área de texto não-editável dentro de um JScrollPane
+        JTextArea txt = new JTextArea();
+        txt.setText(msg); // texto inicial
+        txt.setEditable(false);
+        txt.setLineWrap(true);
+        txt.setWrapStyleWord(true);
+        txt.setFont(new Font("Arial", Font.PLAIN, 14));
+        txt.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+
+        JScrollPane scroll = new JScrollPane(txt);
+        scroll.setPreferredSize(new Dimension(620, 260));
+        content.add(scroll, BorderLayout.CENTER);
+
+        // --- Sul: imagem + botão OK (imagem acima do botão)
+        JPanel south = new JPanel();
+        south.setLayout(new BoxLayout(south, BoxLayout.Y_AXIS));
+        south.setBorder(new EmptyBorder(10, 10, 10, 10));
+
+        // Carrega imagem
+//        String imagemPath = caminhoImagem;
+//        JLabel imagemLabel = new JLabel();
+//        imagemLabel.setAlignmentX(Component.CENTER_ALIGNMENT); // centralizar horizontalmente
+//        try {
+//            BufferedImage img = ImageIO.read(new File(imagemPath));
+//            // opcional: redimensionar mantendo proporção para largura fixa
+//            int targetWidth = 220;
+//            int w = img.getWidth();
+//            int h = img.getHeight();
+//            int targetHeight = (targetWidth * h) / w;
+//            Image scaled = img.getScaledInstance(targetWidth, targetHeight, Image.SCALE_SMOOTH);
+//            imagemLabel.setIcon(new ImageIcon(scaled));
+//        } catch (IOException e) {
+//            // se não encontrar, mostra texto substituto
+//            imagemLabel.setText("Imagem não encontrada: " + imagemPath);
+//            imagemLabel.setFont(new Font("Arial", Font.ITALIC, 12));
+//        }
+//        south.add(imagemLabel);
+//        south.add(Box.createRigidArea(new Dimension(0, 8)));
+
+        // Botão OK centralizado
+        JButton btnOk = new JButton("OK");
+        btnOk.setFont(new Font("Arial", Font.BOLD, 16));
+        btnOk.setAlignmentX(Component.CENTER_ALIGNMENT);
+        btnOk.setPreferredSize(new Dimension(120, 28));
+        btnOk.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                dialog.dispose();
+            }
+        });
+
+        south.add(btnOk);
+
+        content.add(south, BorderLayout.SOUTH);
+
+        dialog.pack();
+        dialog.setLocationRelativeTo(null); // centraliza na tela
+        dialog.setVisible(true);
     }
-    private Long buscarIdEntidade(String codEntidade, Long idEmpresa){
+    private void buscarTitulosVencidosEntidade(Long idEntidade, ActionEvent e){
+        try{
+            TableMap body = new TableMap()
+            body.put("abe01id",idEntidade)
+            WorkerRequest.create(panel.getWindow())
+                    .initialText("Buscando Limite de Crédito")
+                    .dialogVisible(false)
+                    .controllerEndPoint("servlet")
+                    .methodEndPoint("run")
+                    .param("name", "Silcon.servlet.Buscar_Titulos_Vencidos_Entidade")
+                    .header("ignore-body-decrypt", "true")
+                    .parseBody(body)
+                    .success((response) -> {
+                        Boolean contemTituloVencido = response.parseResponse(new TypeReference<Boolean>(){});
+                        if(contemTituloVencido && !exibirQuestao("Constam títulos vencidos para esse cliente, necessário consultar financeiro. Deseja continuar?")){
+                            throw new ValidacaoException("Operação Cancelada.")
+                        }else{
+                            verificarLimiteDeCredito(idEntidade, e);
+                        }
+                    })
+                    .post();
+
+        }catch(Exception err){
+            throw new ValidacaoException(err.getMessage());
+        }
+    }
+    private void verificarLimiteDeCredito(Long idEntidade, ActionEvent e){
+        TableMap body = new TableMap()
+        body.put("abe01id",idEntidade)
+        WorkerRequest.create(panel.getWindow())
+                .initialText("Verificando Limite de Crédito")
+                .dialogVisible(false)
+                .controllerEndPoint("servlet")
+                .methodEndPoint("run")
+                .param("name", "Silcon.servlet.Verificar_Limite_Credito_Entidade")
+                .header("ignore-body-decrypt", "true")
+                .parseBody(body)
+                .success((response) -> {
+                    Boolean limiteCreditoExcedido = response.parseResponse(new TypeReference<Boolean>(){});
+                    if(limiteCreditoExcedido && !exibirQuestao("Limite de crédito ultrapassado, necessario consultar o financeiro. Deseja continuar?")){
+                        throw new ValidacaoException("Operação Cancelada.")
+                    }else {
+                        if(actionEventOriginal != null && actionEventOriginal.size() > 0){
+                            for(evento in actionEventOriginal){
+                                evento.actionPerformed(e) // Executa os eventos originais novamente
+                            }
+                        }
+                    }
+                })
+                .post();
+    }
+    private Long buscarIdEntidade(String codEntidade){
         String sql = "SELECT abe01id FROM abe01 WHERE abe01codigo = '" + codEntidade + "' AND abe01gc = 1075797 ";
         TableMap tmEntidade = executarConsulta(sql)[0];
         Long idEntidade = tmEntidade.getLong("abe01id");
