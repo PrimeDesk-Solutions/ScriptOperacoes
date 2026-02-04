@@ -63,20 +63,24 @@ public class Script extends sam.swing.ScriptBase{
         adicionarEventoChkNFCe();
         adicionarEventoBtnConcluir();
     }
-//    private void adicionarEventoEntidade(){
-//        MNavigation nvgAbe01codigo = getComponente("nvgAbe01codigo");
-//        nvgAbe01codigo.addFocusListener(new FocusListener() {
-//            @Override
-//            void focusGained(FocusEvent e) {}
-//
-//            @Override
-//            void focusLost(FocusEvent e) {
-//                if(nvgAbe01codigo.getValue() != null){
-//                    verificarEntidade(null)
-//                }
-//            }
-//        })
-//    }
+    private void adicionarEventoEntidade(){
+        MNavigation nvgAbe01codigo = getComponente("nvgAbe01codigo");
+        nvgAbe01codigo.addFocusListener(new FocusListener() {
+            @Override
+            void focusGained(FocusEvent e) {}
+
+            @Override
+            void focusLost(FocusEvent e) {
+                if(nvgAbe01codigo.getValue() != null){
+                    Long idEntidade = buscarIdEntidade(nvgAbe01codigo.getValue());
+                    String msgEnt = buscarMensagemEntidade(idEntidade);
+
+                    // Exibe caixa de dialogo na tela com a mensagem do cadastro da entidade
+                    if (msgEnt != null && msgEnt != "") exibirTelaDeAtencaoComMensagemEntidade(msgEnt);
+                }
+            }
+        })
+    }
     private inserirBancoDefault(){
         TableMap jsonAab10 = buscarCamposCustomUser();
         MNavigation nvgAbf01codigo = getComponente("nvgAbf01codigo");
