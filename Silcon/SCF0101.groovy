@@ -109,21 +109,22 @@
                 def departamentos = sprDaa0101s.getValue();
                 def naturezas = sprDaa01011s.getValue();
 
+
                 if(dtPgto == null || dtBaixa == null) throw new RuntimeException("Não é possível estornar um documento não baixado.")
 
-                if(codOperacao == null) interromper("Necessário informar o código da operação.");
-                if(codTipoDoc == null) interromper("Necessário informar o tipo de documento.");
-                if(codEntidade == null) interromper("Necessário informar o código da entidade.");
-                if(numDoc == null) interromper("Necessário informar o número do documento.");
-                if(parcela == null) interromper("Necessário informar a parcela.");
+                if(codOperacao == null) throw new RuntimeException("Necessário informar o código da operação da central de documentos.");
+                if(codTipoDoc == null) throw new RuntimeException("Necessário informar o tipo de documento.");
+                if(codEntidade == null) throw new RuntimeException("Necessário informar o código da entidade.");
+                if(numDoc == null) throw new RuntimeException("Necessário informar o número do documento.");
+                if(parcela == null) throw new RuntimeException("Necessário informar a parcela.");
 
                 Long idOperacao = obterIdOperacao(codOperacao, idEmpresa);
                 Long idTipoDoc = obterIdTipoDoc(codTipoDoc);
                 Long idEntidade = obterIdEntidade(codEntidade, idEmpresa);
 
-                if(idOperacao == null) interromper("Não foi encontrado operação comercial com o código " + codOperacao + " na empresa ativa.");
-                if(idTipoDoc == null) interromper("Não foi encontrado tipo de documento com o código " + codTipoDoc);
-                if(idEntidade == null) interromper("Não foi encontrado entidade com o código " + codEntidade + " na empresa ativa.");
+                if(idOperacao == null) throw new RuntimeException("Não foi encontrado operação comercial com o código " + codOperacao + " na empresa ativa.");
+                if(idTipoDoc == null) throw new RuntimeException("Não foi encontrado tipo de documento com o código " + codTipoDoc);
+                if(idEntidade == null) throw new RuntimeException("Não foi encontrado entidade com o código " + codEntidade + " na empresa ativa.");
 
                 SCF0116 scf0116 = new SCF0116();
                 WindowUtils.createJDialog(scf0116.getWindow(), scf0116);
@@ -144,7 +145,9 @@
             }
         }
         private Long obterIdOperacao(String codOperacao, Long idEmpresa){
-            TableMap tmOperacao = executarConsulta("SELECT abb10id FROM abb10 WHERE abb10codigo = '" + codOperacao + "' AND abb10gc = " + idEmpresa.toString())[0];
+            Long idGc = buscarGCPelaEmpresaAtiva(idEmpresa, "Abb10");
+
+            TableMap tmOperacao = executarConsulta("SELECT abb10id FROM abb10 WHERE abb10codigo = '" + codOperacao + "' AND abb10gc = " + idGc.toString())[0];
 
             return tmOperacao != null ? tmOperacao.getLong("abb10id") : null;
         }
@@ -154,7 +157,9 @@
             return tmTipoDoc != null ? tmTipoDoc.getLong("aah01id") : null;
         }
         private Long obterIdEntidade(String codEntidade, Long idEmpresa){
-            TableMap tmEntidade = executarConsulta("SELECT abe01id FROM abe01 WHERE abe01codigo = '" + codEntidade + "' AND abe01gc = " + idEmpresa)[0];
+            Long idGc = buscarGCPelaEmpresaAtiva(idEmpresa, "Abe01");
+
+            TableMap tmEntidade = executarConsulta("SELECT abe01id FROM abe01 WHERE abe01codigo = '" + codEntidade + "' AND abe01gc = " + idGc.toString())[0];
 
             return tmEntidade != null ? tmEntidade.getLong("abe01id") : null;
         }
@@ -189,6 +194,19 @@
                     estornarDocumento();
                 }
             });
+        }
+        private Long buscarGCPelaEmpresaAtiva(Long idEmpresa, String tabela){
+            try{
+                String sql = "SELECT aac1001gc FROM aac1001 WHERE aac1001empresa = " + idEmpresa +" AND aac1001tabela = '" + tabela + "'";
+
+                TableMap tm = executarConsulta(sql)[0];
+
+                if(tm.size() == 0) interromper("Script: Não foi encontrado Grupo Centralizador para a tabela " + tabela +" na empresa ativa.")
+
+                return tm.getLong("aac1001gc");
+            }catch(Exception e){
+                throw new ValidacaoException("Falha ao buscar grupo centralizador a partir da empresa ativa.")
+            }
         }
         private void selectionButtonPressed() {
             try{
@@ -246,7 +264,6 @@
                 ErrorDialog.defaultCatch(this.tarefa.getWindow(), err);
             }
         }
-
         private byte[] buscarDadosImpressao(Long idDoc, String codBanco) {
             String json = "{\"nome\":\"Silcon.relatorios.scf.SCF_Boleto_Itau\",\"filtros\":{\"daa01id\":"+idDoc+"}}";
 
