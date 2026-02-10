@@ -1,3 +1,9 @@
+/*
+    SCV2001 - Pedidos de Venda
+    1. Insere evento no botão ESC para perguntar se deseja realmente sair
+    2. Altera a lista de busca (F4) das entidade e dos itens
+    3. Insere botão de impressão de documentos
+ */
 import br.com.multitec.utils.ValidacaoException
 import br.com.multitec.utils.collections.TableMap
 import br.com.multitec.utils.http.HttpRequest
@@ -13,7 +19,6 @@ import org.apache.pdfbox.printing.PDFPageable
 import sam.model.entities.ab.Abm01
 import sam.swing.tarefas.cgs.CGS5001
 import sam.swing.tarefas.scv.SCV2002
-
 import javax.print.DocFlavor
 import javax.print.PrintService
 import javax.print.PrintServiceLookup;
@@ -23,16 +28,53 @@ import java.awt.event.ActionListener
 import java.awt.event.ActionEvent
 import sam.model.entities.ea.Eaa01;
 import sam.swing.tarefas.srf.SRF1001
+import br.com.multitec.utils.UiSqlColumn;
+
 
 import java.awt.print.PrinterJob
 
 
 public class Script extends sam.swing.ScriptBase{
     MultitecRootPanel tarefa
+    public Runnable windowLoadOriginal;
+
     @Override
     public void execute(MultitecRootPanel tarefa) {
         this.tarefa = tarefa;
+        tarefa.getWindow().getJMenuBar().getMnuArquivo().getMniCancelar().addActionListener(mnu -> this.adicionaEventoESC(mnu));
+        this.windowLoadOriginal = tarefa.windowLoad ;
+        tarefa.windowLoad = {novoWindowLoad()};
         adicionaBotãoImprimirDocumento();
+    }
+    protected void adicionaEventoESC(ActionEvent evt) {
+        if(!exibirQuestao("Deseja realmente sair sem SALVAR?")) interromper("Por favor salvar antes de SAIR.");
+    }
+    protected void novoWindowLoad(){
+        this.windowLoadOriginal.run();
+
+        def ctrAbb01ent = getComponente("ctrAbb01ent");
+        def ctrEaa0103item = getComponente("ctrEaa0103item");
+
+        ctrAbb01ent.f4Columns = () -> {
+            java.util.List<UiSqlColumn> uiSqlColumn = new ArrayList<>();
+            UiSqlColumn abe01codigo = new UiSqlColumn("abe01codigo", "abe01codigo", "Código", 10);
+            UiSqlColumn abe01na = new UiSqlColumn("abe01na", "abe01na", "Nome Abreviado", 40);
+            UiSqlColumn abe01nome = new UiSqlColumn("abe01nome", "abe01nome", "Nome", 60);
+            UiSqlColumn abe01ni = new UiSqlColumn("abe01ni", "abe01ni", "Número da Inscrição", 60);
+            uiSqlColumn.addAll(Arrays.asList(abe01codigo, abe01na, abe01nome, abe01ni));
+            return uiSqlColumn;
+        };
+
+        ctrEaa0103item.f4Columns = () ->{
+            java.util.List<UiSqlColumn> uiSqlColumn = new ArrayList<>();
+            UiSqlColumn abm01codigo = new UiSqlColumn("abm01codigo", "abm01codigo", "Código", 20);
+            UiSqlColumn abm01gtin = new UiSqlColumn("abm01gtin", "abm01gtin", "GTIN", 20);
+            UiSqlColumn abm01descr = new UiSqlColumn("abm01descr", "abm01descr", "Descrição", 120);
+            UiSqlColumn abm01complem = new UiSqlColumn("abm01complem", "abm01complem", "Fabricante", 255);
+            uiSqlColumn.addAll(Arrays.asList(abm01codigo,abm01gtin, abm01descr, abm01complem));
+            return uiSqlColumn;
+        }
+
     }
     private void adicionaBotãoImprimirDocumento(){
         JPanel panel7 = getComponente("panel7");

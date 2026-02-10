@@ -18,6 +18,7 @@
     6. Cria botão de imprimir documento, ao selecionar o botão considerar:
         6.1 Tipo de documento 04 ou 16, abrir tela de impressão de documento (SRF1009);
         6.2 Demais tipos de documentos enviar diretamente para impressora
+    7. Altera a lista de busca (F4) das entidade e dos itens
  */
 
 package scripts
@@ -92,6 +93,7 @@ public class SRF1002 extends sam.swing.ScriptBase{
         this.windowLoadOriginal.run();
 
         def ctrAbb01ent = getComponente("ctrAbb01ent");
+        def ctrEaa0103item = getComponente("ctrEaa0103item");
 
         ctrAbb01ent.f4Columns = () -> {
             java.util.List<UiSqlColumn> uiSqlColumn = new ArrayList<>();
@@ -102,6 +104,17 @@ public class SRF1002 extends sam.swing.ScriptBase{
             uiSqlColumn.addAll(Arrays.asList(abe01codigo, abe01na, abe01nome, abe01ni));
             return uiSqlColumn;
         };
+
+        ctrEaa0103item.f4Columns = () ->{
+            java.util.List<UiSqlColumn> uiSqlColumn = new ArrayList<>();
+            UiSqlColumn abm01codigo = new UiSqlColumn("abm01codigo", "abm01codigo", "Código", 20);
+            UiSqlColumn abm01gtin = new UiSqlColumn("abm01gtin", "abm01gtin", "GTIN", 20);
+            UiSqlColumn abm01descr = new UiSqlColumn("abm01descr", "abm01descr", "Descrição", 120);
+            UiSqlColumn abm01complem = new UiSqlColumn("abm01complem", "abm01complem", "Fabricante", 255);
+            uiSqlColumn.addAll(Arrays.asList(abm01codigo,abm01gtin, abm01descr, abm01complem));
+            return uiSqlColumn;
+        }
+
     }
     private void adicionaEventoPCD(){
         MNavigation nvgAbd01codigo = getComponente("nvgAbd01codigo");
