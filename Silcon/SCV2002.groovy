@@ -3,6 +3,7 @@
     1. Insere evento no botão ESC para perguntar se deseja realmente sair
     2. Altera a lista de busca (F4) das entidade e dos itens
     3. Insere botão de impressão de documentos
+    4. Exibe uma mensagem se deseja recalcular os itens ao trocar a tabela de preço
  */
 import br.com.multitec.utils.ValidacaoException
 import br.com.multitec.utils.collections.TableMap
@@ -27,10 +28,13 @@ import javax.swing.JButton
 import java.awt.event.ActionListener
 import java.awt.event.ActionEvent
 import sam.model.entities.ea.Eaa01;
+import sam.model.entities.ea.Eaa0103;
 import sam.swing.tarefas.srf.SRF1001
 import br.com.multitec.utils.UiSqlColumn;
+import multitec.swing.components.spread.MSpread
 
-
+import java.awt.event.FocusEvent
+import java.awt.event.FocusListener
 import java.awt.print.PrinterJob
 
 
@@ -41,10 +45,38 @@ public class Script extends sam.swing.ScriptBase{
     @Override
     public void execute(MultitecRootPanel tarefa) {
         this.tarefa = tarefa;
+        adicionarEventoTabelaPreco();
         tarefa.getWindow().getJMenuBar().getMnuArquivo().getMniCancelar().addActionListener(mnu -> this.adicionaEventoESC(mnu));
         this.windowLoadOriginal = tarefa.windowLoad ;
         tarefa.windowLoad = {novoWindowLoad()};
         adicionaBotãoImprimirDocumento();
+    }
+    private void adicionarEventoTabelaPreco(){
+        MNavigation nvgAbe40codigo = getComponente("nvgAbe40codigo");
+        nvgAbe40codigo.addFocusListener(new FocusListener() {
+            @Override
+            void focusGained(FocusEvent e) {}
+
+            @Override
+            void focusLost(FocusEvent e) {
+                recalcularItens();
+            }
+        })
+    }
+    private void recalcularItens(){
+        MSpread sprEaa0103s = getComponente("sprEaa0103s");
+        List<Eaa0103> eaa0103s = sprEaa0103s.getValue();
+        if(eaa0103s.size() == 0) return;
+        if(exibirQuestao("Deseja recalcular os itens?")){
+            JButton btnRecalcularDocumento = getComponente("btnRecalcularDocumento");
+
+            for (eaa0103 in eaa0103s){
+                eaa0103.eaa0103unit = new BigDecimal(0);
+            }
+            sprEaa0103s.refreshAll();
+            btnRecalcularDocumento.doClick();
+        }
+
     }
     protected void adicionaEventoESC(ActionEvent evt) {
         if(!exibirQuestao("Deseja realmente sair sem SALVAR?")) interromper("Por favor salvar antes de SAIR.");
