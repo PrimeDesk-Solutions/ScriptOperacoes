@@ -4,6 +4,7 @@
     2. Altera a lista de busca (F4) das entidade e dos itens
     3. Insere botão de impressão de documentos
     4. Exibe uma mensagem se deseja recalcular os itens ao trocar a tabela de preço
+    5. Remove a coluna abm01na e altera a posição da coluna abm01descr
  */
 import br.com.multitec.utils.ValidacaoException
 import br.com.multitec.utils.collections.TableMap
@@ -49,6 +50,8 @@ public class Script extends sam.swing.ScriptBase{
         tarefa.getWindow().getJMenuBar().getMnuArquivo().getMniCancelar().addActionListener(mnu -> this.adicionaEventoESC(mnu));
         this.windowLoadOriginal = tarefa.windowLoad ;
         tarefa.windowLoad = {novoWindowLoad()};
+        moverColunas();
+        ocultarColunaSpread();
         adicionaBotãoImprimirDocumento();
     }
     private void adicionarEventoTabelaPreco(){
@@ -107,6 +110,15 @@ public class Script extends sam.swing.ScriptBase{
             return uiSqlColumn;
         }
 
+    }
+    private void moverColunas() {
+        MSpread sprEaa0103s = getComponente("sprEaa0103s")
+        //mover coluna
+        sprEaa0103s.getColumnIndex("eaa0103descr") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103descr"), 5) : null //nome completo do item
+    }
+    private void ocultarColunaSpread(){
+        MSpread sprEaa0103s = getComponente("sprEaa0103s");
+        ocultarColunas(sprEaa0103s, 4)
     }
     private void adicionaBotãoImprimirDocumento(){
         JPanel panel7 = getComponente("panel7");
