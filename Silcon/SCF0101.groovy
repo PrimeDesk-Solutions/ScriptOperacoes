@@ -12,8 +12,10 @@
     import multitec.swing.components.textfields.MTextFieldLocalDate
     import multitec.swing.components.textfields.MTextFieldString
     import multitec.swing.components.textfields.MTextFieldBigDecimal
+    import sam.model.entities.ea.Eaa01
     import sam.swing.tarefas.scf.SCF0103
     import sam.swing.tarefas.scf.SCF0116
+    import sam.swing.tarefas.srf.SRF1001
 
     import java.awt.event.ActionEvent
     import java.awt.event.ActionListener
@@ -42,6 +44,7 @@
     import sam.swing.tarefas.spv.SPV1001
     import sam.swing.tarefas.scf.SCF0101
     import sam.model.entities.da.Daa01;
+    import sam.model.entities.da.Daa0102;
     import multitec.swing.core.utils.WindowUtils;
     import sam.swing.tarefas.sce.SCE1503;
 
@@ -53,7 +56,7 @@
     import java.time.LocalDate
 
     class SCF0101 extends sam.swing.ScriptBase {
-        private MultitecRootPanel tarefa;
+        MultitecRootPanel tarefa;
 
         public void preSalvar(boolean salvo) {
             // Verifica se foi informado departamento ou natureza no documento
@@ -211,60 +214,37 @@
         private void selectionButtonPressed() {
             try{
                 MSpread sprDaa0102s = getComponente("sprDaa0102s");
-                def spread = sprDaa0102s.getValue();
-                MTextFieldInteger txtAbb01num = getComponente("txtAbb01num");
-                MTextFieldString txtAbb01serie = getComponente("txtAbb01serie");
-                MNavigation nvgAbe01codigo = getComponente("nvgAbe01codigo");
-                MTextFieldString txtAbb01parcela = getComponente("txtAbb01parcela");
-                MTextFieldInteger txtAbb01quita = getComponente("txtAbb01quita");
-                MNavigation nvgAbf01codigo = getComponente("nvgAbf01codigo");
+                List<Daa0102> sprIntegracao = sprDaa0102s.getValue();
                 MTextFieldLocalDate txtDaa01dtBaixa = getComponente("txtDaa01dtBaixa");
                 MTextFieldLocalDate txtDaa01dtPgto = getComponente("txtDaa01dtPgto");
-                Integer numDoc = txtAbb01num.getValue();
-                String serie = txtAbb01serie.getValue();
-                String codigoEnt =nvgAbe01codigo.getValue();
-                String parcela =txtAbb01parcela.getValue();
-                Integer quita = txtAbb01quita.getValue();
-                String codBanco = nvgAbf01codigo.getValue();
                 String dtBaixa = txtDaa01dtBaixa.getValue();
                 String dtPgto = txtDaa01dtPgto.getValue();
 
                 if(dtBaixa != null || dtPgto != null) interromper("Documento já pago/baixado, não é possível imprimir o boleto.")
 
                 //Verifica se existe integração bancária no documento
-                if(spread.size() == 0){
-                    interromper("Não foi Possível Gerar Boleto, Documento Sem Integração Bancária");
+                if(sprIntegracao.size() == 0){
+                    interromper("Não é possível gerar boleto de documento sem integração bancária.");
                 }
 
-                //SQL para buscar ID do documento financeiro selecionado em tela
-                TableMap documento = executarConsulta( "SELECT daa01id "+
-                        "FROM daa01 "+
-                        "INNER JOIN abb01 ON abb01id = daa01central "+
-                        "INNER JOIN abe01 abe01 ON abe01id = abb01ent "+
-                        "WHERE abb01num = '"+numDoc+"' "+
-                        "AND abe01codigo = '"+codigoEnt+"' "+
-                        "AND abb01serie = '"+serie+"' "+
-                        "AND abb01parcela = '"+parcela+"' "+
-                        "AND abb01quita = '"+quita+"' ")[0];
+                Daa01 daa01 = (Daa01) ((MultitecRootPanel) tarefa).registro;
 
-                if(documento.size() == 0) interromper("Nenhum documento financeiro encontrado para impressão do boleto.");
-
-                Long idDoc = documento.getLong("daa01id")
+                if(daa01 == null || daa01.daa01id == null) interromper("Antes de imprimir o boleto é necessário salvar o documento.");
 
                 WorkerSupplier.create(this.tarefa.getWindow(), {
-                    return buscarDadosImpressao(idDoc, codBanco);
+                    return buscarDadosImpressao(daa01.daa01id);
                 })
                         .initialText("Imprimindo BOLETO")
                         .dialogVisible(true)
                         .success({ bytes ->
-                            enviarDadosParaImpressao(bytes, idDoc);
+                            enviarDadosParaImpressao(bytes, daa01.daa01id);
                         })
                         .start();
             } catch (Exception err) {
                 ErrorDialog.defaultCatch(this.tarefa.getWindow(), err);
             }
         }
-        private byte[] buscarDadosImpressao(Long idDoc, String codBanco) {
+        private byte[] buscarDadosImpressao(Long idDoc) {
             String json = "{\"nome\":\"Silcon.relatorios.scf.SCF_Boleto_Itau\",\"filtros\":{\"daa01id\":"+idDoc+"}}";
 
             ObjectMapper mapper = new ObjectMapper();
