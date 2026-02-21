@@ -4,7 +4,7 @@ import com.fazecast.jSerialComm.SerialPort
 import groovy.transform.ThreadInterrupt
 import multitec.swing.components.autocomplete.MNavigationController
 import multitec.swing.components.autocomplete.MNavigation
-
+import multitec.swing.components.MComboBox;
 import multitec.swing.components.spread.MSpread
 import multitec.swing.components.textfields.MTextFieldBigDecimal
 import multitec.swing.components.textfields.MTextFieldInteger
@@ -50,19 +50,20 @@ class Script extends ScriptBase {
     private SerialPort porta;
     private InputStream input;
     private OutputStream output;
-    private String portaComm = "COM3";
+    private String portaComm = "COM4";
     private int baundRate = 9600;
     private int baundBits = 8;
     private Thread threadPesagem;
     private static final byte STX = 0x02;
-    private String impressoraDefault = "ZEBRA QUEIJO";
+    private static final byte CR = 0x0D;
+    private String impressoraDefault = "ZEBRA QUEIJO 2";
 
     // Variáveis de estado para controle da pesagem
     private volatile int leiturasEstaveisConsecutivas = 0;
     private volatile BigDecimal pesoConsideradoEstavel = null;
-    private final int numeroMinimoLeiturasEstaveis = 4;
+    private final int numeroMinimoLeiturasEstaveis = 3;
     private AtomicBoolean pesoProcessadoNestaPesagem = new AtomicBoolean(false);
-    private final BigDecimal limitePesoZero = new BigDecimal("0.040");
+    private final BigDecimal limitePesoZero = new BigDecimal("0.200");
     private int casasDecimais = 3;
 
 
@@ -118,10 +119,14 @@ class Script extends ScriptBase {
         exibirInformacao(impressoras.toString());
     }
     private void setarCamposDefault() {
-        MNavigationController ctrAam05 = getComponente("ctrAam05")
-        Aab10 aab10 = obterUsuarioLogado();
+        MNavigationController ctrAam05 = getComponente("ctrAam05");
+        MComboBox cmbAbm01tipo = getComponente("cmbAbm01tipo");
+        MNavigation nvgAah01codigo = getComponente("nvgAah01codigo");
 
+        Aab10 aab10 = obterUsuarioLogado();
+        cmbAbm01tipo.setValue(1);
         ctrAam05.setIdValue(18174787);
+        nvgAah01codigo.getNavigationController().setIdValue(69766);
     }
     private void adicionarComponentesPesagem(){
         adicionarBotaoIniciarPesagem();
@@ -193,7 +198,7 @@ class Script extends ScriptBase {
             porta.setParity(SerialPort.NO_PARITY);
 
             // MODIFICAÇÃO: Usar TIMEOUT_READ_SEMI_BLOCKING com timeout curto
-            porta.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 100, 0);
+            porta.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 500, 0);
 
             if(!porta.openPort()) throw new RuntimeException("Não foi possível abrir a porta: " + portaComm);
 
@@ -235,14 +240,17 @@ class Script extends ScriptBase {
 
                                     if(!start) continue // Se não encontrado STX, ignora tudo
 
+                                    if(currentByte == CR){
+                                        String pesoStr = messageBuilder.toString().trim();
+                                        processarMensagemCompleta(pesoStr, self);
+
+                                        messageBuilder.setLength(0);
+                                        start = false;
+                                        continue
+                                    }
+
                                     // Acumula os bytes dentro do buffer após o STX
                                     messageBuilder.append((char) currentByte);
-
-                                    if(messageBuilder.length() >= 6){
-                                        String pesoStr = messageBuilder.toString().trim();
-
-                                        processarMensagemCompleta(pesoStr, self);
-                                    }
                                 }
                             }
                         }catch(Exception e){
@@ -303,6 +311,7 @@ class Script extends ScriptBase {
             }
 
             BigDecimal pesoLidoAtual = new BigDecimal(tempPesoFormatado);
+            BigDecimal tolerancia = new BigDecimal("0.002")
 
             // Lógica de estabilidade
             synchronized (self){
@@ -312,7 +321,7 @@ class Script extends ScriptBase {
                     }
                 }else{
                     // Lógica de detecção de estabilidade
-                    if(pesoConsideradoEstavel == null || pesoLidoAtual.compareTo(pesoConsideradoEstavel) != 0){
+                    if(pesoConsideradoEstavel == null ||  pesoLidoAtual.subtract(pesoConsideradoEstavel).abs().compareTo(tolerancia) > 0){
                         // Peso mudou ou é a primeira leitura
                         pesoConsideradoEstavel = pesoLidoAtual;
                         leiturasEstaveisConsecutivas = 1;
