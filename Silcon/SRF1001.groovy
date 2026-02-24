@@ -1,9 +1,15 @@
+/*
+    SRF1001 - Recebimentos
+    1. Altera a ordem das colunas
+    2. Adiciona botão de imprimir documento
+ */
 import br.com.multitec.utils.ValidacaoException
 import br.com.multitec.utils.collections.TableMap
 import br.com.multitec.utils.http.HttpRequest
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import multitec.swing.components.autocomplete.MNavigation
+import multitec.swing.components.spread.MSpread
 import multitec.swing.core.MultitecRootPanel
 import multitec.swing.core.dialogs.ErrorDialog
 import multitec.swing.request.WorkerRunnable
@@ -31,7 +37,22 @@ public class Script extends sam.swing.ScriptBase{
     @Override
     public void execute(MultitecRootPanel tarefa) {
         this.tarefa = tarefa;
+        reordenarColunas();
         adicionaBotãoImprimirDocumento();
+    }
+    private void reordenarColunas(){
+        MSpread sprEaa0103s = getComponente("sprEaa0103s")
+        sprEaa0103s.getColumnIndex("eaa0103descr") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103descr"), 3) : null;
+        sprEaa0103s.getColumnIndex("eaa0103umu.aam06codigo") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103umu.aam06codigo"), 4) : null;
+        sprEaa0103s.getColumnIndex("eaa0103umComl.aam06codigo") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103umComl.aam06codigo"), 5) : null;
+        sprEaa0103s.getColumnIndex("eaa0103qtComl") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103qtComl"), 6) : null;
+        sprEaa0103s.getColumnIndex("eaa0103unit") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103unit"), 7) : null;
+        sprEaa0103s.getColumnIndex("eaa0103total") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103total"), 8) : null;
+        sprEaa0103s.getColumnIndex("eaa0103totDoc") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103totDoc"), 9) : null;
+        sprEaa0103s.getColumnIndex("eaa0103totFinanc") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103totFinanc"), 10) : null;
+        sprEaa0103s.getColumnIndex("eaa0103entrega") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103entrega"), 11) : null;
+        sprEaa0103s.getColumnIndex("eaa0103ncm.abg01codigo") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103ncm.abg01codigo"), 12) : null;
+        sprEaa0103s.getColumnIndex("eaa0103ncm.abg01descr") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103ncm.abg01descr"), 13) : null;
     }
     private void adicionaBotãoImprimirDocumento(){
         JPanel panel7 = getComponente("panel7");

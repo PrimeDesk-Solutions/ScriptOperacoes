@@ -4,7 +4,7 @@
     2. Altera a lista de busca (F4) das entidade e dos itens
     3. Insere botão de impressão de documentos
     4. Exibe uma mensagem se deseja recalcular os itens ao trocar a tabela de preço
-    5. Remove a coluna abm01na e altera a posição da coluna abm01descr
+    5. Remove a coluna abm01na e altera a posição das demais colunas
  */
 import br.com.multitec.utils.ValidacaoException
 import br.com.multitec.utils.collections.TableMap
@@ -50,7 +50,7 @@ public class Script extends sam.swing.ScriptBase{
         tarefa.getWindow().getJMenuBar().getMnuArquivo().getMniCancelar().addActionListener(mnu -> this.adicionaEventoESC(mnu));
         this.windowLoadOriginal = tarefa.windowLoad ;
         tarefa.windowLoad = {novoWindowLoad()};
-        moverColunas();
+        reordenarColunas();
         ocultarColunaSpread();
         adicionaBotãoImprimirDocumento();
     }
@@ -111,10 +111,19 @@ public class Script extends sam.swing.ScriptBase{
         }
 
     }
-    private void moverColunas() {
+    private void reordenarColunas(){
         MSpread sprEaa0103s = getComponente("sprEaa0103s")
-        //mover coluna
-        sprEaa0103s.getColumnIndex("eaa0103descr") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103descr"), 5) : null //nome completo do item
+        sprEaa0103s.getColumnIndex("eaa0103descr") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103descr"), 3) : null;
+        sprEaa0103s.getColumnIndex("eaa0103umu.aam06codigo") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103umu.aam06codigo"), 4) : null;
+        sprEaa0103s.getColumnIndex("eaa0103umComl.aam06codigo") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103umComl.aam06codigo"), 5) : null;
+        sprEaa0103s.getColumnIndex("eaa0103qtComl") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103qtComl"), 6) : null;
+        sprEaa0103s.getColumnIndex("eaa0103unit") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103unit"), 7) : null;
+        sprEaa0103s.getColumnIndex("eaa0103total") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103total"), 8) : null;
+        sprEaa0103s.getColumnIndex("eaa0103totDoc") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103totDoc"), 9) : null;
+        sprEaa0103s.getColumnIndex("eaa0103totFinanc") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103totFinanc"), 10) : null;
+        sprEaa0103s.getColumnIndex("eaa0103entrega") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103entrega"), 11) : null;
+        sprEaa0103s.getColumnIndex("eaa0103ncm.abg01codigo") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103ncm.abg01codigo"), 12) : null;
+        sprEaa0103s.getColumnIndex("eaa0103ncm.abg01descr") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103ncm.abg01descr"), 13) : null;
     }
     private void ocultarColunaSpread(){
         MSpread sprEaa0103s = getComponente("sprEaa0103s");
