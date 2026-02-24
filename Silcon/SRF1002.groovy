@@ -19,6 +19,7 @@
         6.1 Tipo de documento 04 ou 16, abrir tela de impressão de documento (SRF1009);
         6.2 Demais tipos de documentos enviar diretamente para impressora
     7. Altera a lista de busca (F4) das entidade e dos itens
+    8. recalcula os itens após alterar a tabela de preço
  */
 
 package scripts
@@ -28,6 +29,8 @@ import multitec.swing.components.autocomplete.MNavigation
 import multitec.swing.components.textfields.MTextArea
 import multitec.swing.core.MultitecRootPanel
 import multitec.swing.core.utils.WindowUtils
+import sam.model.entities.ea.Eaa0103
+
 import java.awt.event.FocusListener;
 import javax.swing.SwingUtilities
 import javax.swing.*;
@@ -80,11 +83,39 @@ public class SRF1002 extends sam.swing.ScriptBase{
     @Override
     public void execute(MultitecRootPanel tarefa) {
         this.tarefa = tarefa;
+        adicionarEventoTabelaPreco();
         tarefa.getWindow().getJMenuBar().getMnuArquivo().getMniCancelar().addActionListener(mnu -> this.adicionaEventoESC(mnu));
         this.windowLoadOriginal = tarefa.windowLoad ;
         tarefa.windowLoad = {novoWindowLoad()};
         adicionaEventoPCD();
         adicionaBotaoImprimirDanfe();
+    }
+    private void adicionarEventoTabelaPreco(){
+        MNavigation nvgAbe40codigo = getComponente("nvgAbe40codigo");
+        nvgAbe40codigo.addFocusListener(new FocusListener() {
+            @Override
+            void focusGained(FocusEvent e) {}
+
+            @Override
+            void focusLost(FocusEvent e) {
+                recalcularItens();
+            }
+        })
+    }
+    private void recalcularItens(){
+        MSpread sprEaa0103s = getComponente("sprEaa0103s");
+        java.util.List<Eaa0103> eaa0103s = sprEaa0103s.getValue();
+        if(eaa0103s.size() == 0) return;
+        if(exibirQuestao("Deseja recalcular os itens?")){
+            JButton btnRecalcularDocumento = getComponente("btnRecalcularDocumento");
+
+            for (eaa0103 in eaa0103s){
+                eaa0103.eaa0103unit = new BigDecimal(0);
+            }
+            sprEaa0103s.refreshAll();
+            btnRecalcularDocumento.doClick();
+        }
+
     }
     protected void adicionaEventoESC(ActionEvent evt) {
         if(!exibirQuestao("Deseja realmente sair sem SALVAR?")) interromper("Por favor salvar antes de SAIR.");
