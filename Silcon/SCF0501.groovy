@@ -129,19 +129,14 @@ public class Script extends sam.swing.ScriptBase{
         BigDecimal totDocs = BigDecimal.ZERO;
 
         for(registro in vlrSpread ){
+            interromper(registro.toString())
             Integer diasAtraso = registro.getInteger("dias");
-            BigDecimal jurosCalculado = registro.getBigDecimal_Zero("daa01json.juros") * diasAtraso.abs();
+            diasAtraso < 0 ? registro.put("daa01json.juros", registro.getBigDecimal_Zero("daa01json.juros") * diasAtraso.abs()) : registro.put("daa01json.juros", BigDecimal.ZERO)
             totDesconto += registro.getBigDecimal_Zero("daa01json.desconto");
             totMulta += registro.getBigDecimal_Zero("daa01json.multa");
-            totJuros += jurosCalculado;
+            totJuros += registro.getBigDecimal_Zero("daa01json.juros");
             totEncargos += registro.getBigDecimal_Zero("daa01json.encargos");
             totDocs += registro.getBigDecimal("valor");
-
-            if(diasAtraso < 0){
-                registro.put("daa01json.juros", jurosCalculado.round(2));
-            }else{
-                registro.put("daa01json.juros", BigDecimal.ZERO);
-            }
         }
 
         BigDecimal totGeral = totDocs + totMulta + totJuros + totEncargos - totDesconto.abs();
