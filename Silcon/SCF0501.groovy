@@ -2,6 +2,8 @@ import multitec.swing.core.MultitecRootPanel;
 import br.com.multitec.utils.collections.TableMap
 import com.amazonaws.protocol.json.internal.JsonMarshaller
 import multitec.swing.core.MultitecRootPanel
+import multitec.swing.core.utils.WindowUtils
+import sam.swing.tarefas.scf.SCF0101
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import java.awt.Rectangle;
@@ -16,9 +18,12 @@ import javax.swing.event.TableModelEvent
 import javax.swing.event.TableModelListener
 import java.awt.event.ActionListener
 import sam.dto.cgs.CGS2050DocumentoSCFDto
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
 import java.time.temporal.ChronoUnit
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import multitec.swing.core.dialogs.ErrorDialog;
 
 public class Script extends sam.swing.ScriptBase{
     MTextFieldBigDecimal txtTotalDesconto = new MTextFieldBigDecimal();
@@ -28,8 +33,11 @@ public class Script extends sam.swing.ScriptBase{
     MTextFieldBigDecimal txtTotalGeral = new MTextFieldBigDecimal();
     JLabel lblTotalGeral = new JLabel();
     private boolean preenchendoSpread = false;
+    MultitecRootPanel tarefa;
     @Override
     public void execute(MultitecRootPanel tarefa) {
+        this.tarefa = tarefa;
+        adicionarEventoSprEntidadeRealizarAReceber();
         adicionarEventoBtnMostrar();
         reordenarColunas();
         alterarPosicoesComponentes();
@@ -41,9 +49,38 @@ public class Script extends sam.swing.ScriptBase{
         btnMostrarEntRealizar.addActionListener(new ActionListener() {
             @Override
             void actionPerformed(ActionEvent e) {
+                zerarCamposCustomizados();
                 preenchendoSpread = true;
             }
         })
+    }
+    private void adicionarEventoSprEntidadeRealizarAReceber() {
+        MSpread sprEntidadeRealizarAReceber = getComponente("sprEntidadeRealizarAReceber");
+        sprEntidadeRealizarAReceber.addMouseListener(new MouseAdapter() {
+            @Override
+            void mouseClicked(MouseEvent e) {
+                sprEntidadeRealizarAReceberMouseClicked(e);
+            }
+        })
+    }
+    private void  sprEntidadeRealizarAReceberMouseClicked(MouseEvent e){
+        MSpread sprEntidadeRealizarAReceber = getComponente("sprEntidadeRealizarAReceber");
+        try{
+            if(e.getClickCount() == 2 && sprEntidadeRealizarAReceber.getSelectedRow() >= 0){
+                int row = sprEntidadeRealizarAReceber.getSelectedRow();
+                if(row < 0) return;
+                Long idDocFinanc = ((TableMap)sprEntidadeRealizarAReceber.get(row)).getLong("daa01id");
+
+                SCF0101 scf0101 = new SCF0101();
+                WindowUtils.createJDialog(scf0101.getWindow(), scf0101);
+                scf0101.cancelar = () -> scf0101.getWindow().dispose();
+                scf0101.exibirPanelListaCadastro = () -> scf0101.getWindow().dispose();
+                scf0101.editar(idDocFinanc);
+                scf0101.getWindow().setVisible(true);
+            }
+        }catch(Exception err){
+            ErrorDialog.defaultCatch(tarefa.getWindow(), err);
+        }
     }
     private void reordenarColunas(){
         MSpread sprEntidadeRealizarAReceber = getComponente("sprEntidadeRealizarAReceber");
@@ -129,7 +166,6 @@ public class Script extends sam.swing.ScriptBase{
         BigDecimal totDocs = BigDecimal.ZERO;
 
         for(registro in vlrSpread ){
-            interromper(registro.toString())
             Integer diasAtraso = registro.getInteger("dias");
             diasAtraso < 0 ? registro.put("daa01json.juros", registro.getBigDecimal_Zero("daa01json.juros") * diasAtraso.abs()) : registro.put("daa01json.juros", BigDecimal.ZERO)
             totDesconto += registro.getBigDecimal_Zero("daa01json.desconto");
