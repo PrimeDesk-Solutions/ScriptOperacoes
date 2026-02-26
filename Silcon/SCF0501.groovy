@@ -1,11 +1,24 @@
+import br.com.multitec.utils.ValidacaoException
 import multitec.swing.core.MultitecRootPanel;
 import br.com.multitec.utils.collections.TableMap
 import com.amazonaws.protocol.json.internal.JsonMarshaller
 import multitec.swing.core.MultitecRootPanel
 import multitec.swing.core.utils.WindowUtils
+import multitec.swing.request.WorkerRunnable
+import multitec.swing.request.WorkerSupplier
+import org.apache.pdfbox.pdmodel.PDDocument
+import org.apache.pdfbox.printing.PDFPageable
+import sam.model.entities.da.Daa10
 import sam.swing.tarefas.scf.SCF0101
-import javax.swing.JButton;
-import javax.swing.JLabel;
+import sam.swing.tarefas.scf.SCF0150
+
+import javax.print.DocFlavor
+import javax.print.PrintService
+import javax.print.PrintServiceLookup
+import javax.swing.JButton
+import javax.swing.JComboBox;
+import javax.swing.JLabel
+import javax.swing.JOptionPane;
 import java.awt.Rectangle;
 import java.awt.Point;
 import multitec.swing.components.textfields.MTextFieldBigDecimal;
@@ -20,10 +33,25 @@ import java.awt.event.ActionListener
 import sam.dto.cgs.CGS2050DocumentoSCFDto
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
+import java.awt.print.PrinterJob
 import java.time.temporal.ChronoUnit
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import multitec.swing.core.dialogs.ErrorDialog;
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.awt.Desktop
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
+import br.com.multitec.utils.http.HttpRequest
+import multitec.swing.components.textfields.MTextFieldLocalDate;
+import multitec.swing.components.MCheckBox;
+import multitec.swing.components.autocomplete.MNavigation;
+
+
+
+
+
 
 public class Script extends sam.swing.ScriptBase{
     MTextFieldBigDecimal txtTotalDesconto = new MTextFieldBigDecimal();
@@ -37,6 +65,7 @@ public class Script extends sam.swing.ScriptBase{
     @Override
     public void execute(MultitecRootPanel tarefa) {
         this.tarefa = tarefa;
+        criarBotaoImprimirRelatorio();
         adicionarEventoSprEntidadeRealizarAReceber();
         adicionarEventoBtnMostrar();
         reordenarColunas();
@@ -44,6 +73,159 @@ public class Script extends sam.swing.ScriptBase{
         adicionarEventoSpread();
         criarComponentes();
     }
+    private void criarBotaoImprimirRelatorio(){
+        JPanel pnlRealizarEntidade = getComponente("pnlRealizarEntidade");
+
+        JButton btnImprimir = new JButton();
+        btnImprimir.setText("Imprimir Fechamento Cliente");
+        btnImprimir.setBounds(800, 495, 200, 30);
+
+        btnImprimir.addActionListener(new ActionListener() {
+            @Override
+            void actionPerformed(ActionEvent e) {
+                try{
+                    btnImprimirPressed();
+                }catch(Exception ex){
+                    interromper("Falha ao salvar PDF: " + ex.getMessage())
+                }
+            }
+        })
+
+        pnlRealizarEntidade.add(btnImprimir);
+
+    }
+    private void btnImprimirPressed() {
+        try {
+            MCheckBox chkEmissaoRealizar = getComponente("chkEmissaoRealizar");
+            MTextFieldLocalDate txtDataInicialEntEmissaoRealizar = getComponente("txtDataInicialEntEmissaoRealizar");
+            MTextFieldLocalDate txtDataFinalEntEmissaoRealizar = getComponente("txtDataFinalEntEmissaoRealizar");
+            MCheckBox chkVencimento = getComponente("chkVencimento");
+            MTextFieldLocalDate txtDataInicialEntVencimento = getComponente("txtDataInicialEntVencimento");
+            MTextFieldLocalDate txtDataFinallEntVencimento = getComponente("txtDataFinalEntVencimento");
+            MNavigation nvgAbe01codigoEntidade = getComponente("nvgAbe01codigoEntidade");
+
+            if(nvgAbe01codigoEntidade.getValue() == null) throw new ValidacaoException("Informe a entidade para realizar a impressão.")
+
+            Long idEntidade = buscarIdEntidade(nvgAbe01codigoEntidade.getValue());
+            LocalDate dtEmisIni = null;
+            LocalDate dtEmisFin = null;
+            LocalDate dtVctoIni = null;
+            LocalDate dtVctoFin = null;
+
+            if(chkEmissaoRealizar.isSelected()){
+                dtEmisIni = txtDataInicialEntEmissaoRealizar.getValue();
+                dtEmisFin = txtDataFinalEntEmissaoRealizar.getValue();
+            }
+
+            if(chkVencimento.isSelected()){
+                dtVctoIni = txtDataInicialEntVencimento.getValue();
+                dtVctoFin = txtDataFinallEntVencimento.getValue();
+            }
+
+            WorkerSupplier.create(this.tarefa.getWindow(), {
+                return buscarDadosImpressao(idEntidade, dtEmisIni, dtEmisFin, dtVctoIni, dtVctoFin);
+            })
+                    .initialText("Imprimindo Documento")
+                    .dialogVisible(true)
+                    .success({ bytes ->
+                        enviarDadosParaImpressao(bytes);
+                    })
+                    .start();
+        } catch (Exception err) {
+            ErrorDialog.defaultCatch(this.tarefa.getWindow(), err);
+        }
+    }
+    private byte[] buscarDadosImpressao(Long idEntidade, LocalDate dtEmisIni, LocalDate dtEmisFin,  LocalDate dtVctoIni, LocalDate dtVctoFin ) {
+        String json = "{\"nome\":\"Silcon.relatorios.customizados.CST_Fechamento_Cliente\",\"filtros\":{\"abe01id\":\""+idEntidade+"\",\"dtEmisIni\":\""+dtEmisIni.toString()+"\",\"dtEmisFin\":\""+dtEmisFin.toString()+"\",\"dtVctoIni\":\""+dtVctoIni.toString()+"\",\"dtVctoFin\":\""+dtVctoFin.toString()+"\"}}";
+
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode obj = mapper.readTree(json);
+        return HttpRequest.create().controllerEndPoint("relatorio").methodEndPoint("gerarRelatorio").parseBody(obj).post().getResponseBody()
+    }
+    protected void enviarDadosParaImpressao(byte[] bytes) {
+        try {
+            if(bytes == null || bytes.length == 0) {
+                interromper("Não foi encontrado o relatório ou parametrizações para a impressão.");
+            }
+
+            PrintService myService = escolherImpressora();
+
+            WorkerRunnable load = WorkerRunnable.create(this.tarefa.getWindow());
+            load.dialogVisible(true);
+            load.initialText("Enviando Documento para impressão");
+            load.runnable({
+                try {
+                    PDDocument document = PDDocument.load(bytes);
+                    PrinterJob job = PrinterJob.getPrinterJob();
+                    job.setPageable(new PDFPageable(document));
+                    job.setPrintService(myService);
+                    job.setCopies(1);
+                    job.setJobName("Movimento");
+                    job.print();
+                    document.close();
+                }catch (Exception err) {
+                    interromper("Erro ao imprimir Documento. Verifique a impressora utilizada.");
+                }
+            });
+            load.start();
+
+        }catch (Exception err) {
+            ErrorDialog.defaultCatch(this.tarefa.getWindow(), err, "Erro ao enviar dados para impressão.");
+        }
+    }
+
+    protected PrintService escolherImpressora() {
+        PrintService myService = null;
+
+        PrintService[] ps = PrintServiceLookup.lookupPrintServices(DocFlavor.SERVICE_FORMATTED.PAGEABLE, null);
+        if (ps.length == 0) {
+            throw new ValidacaoException("Não foram encontradas impressoras.");
+        }else {
+            String nomeImpressoraComum = null;
+
+            if(ps.length == 1) {
+                nomeImpressoraComum = ps[0].getName();
+            }else {
+                JComboBox<String> jcb = new JComboBox<>();
+
+                for (PrintService printService : ps) {
+                    jcb.addItem(printService.getName());
+                }
+
+                JOptionPane.showMessageDialog(null, jcb, "Selecione a impressora", JOptionPane.QUESTION_MESSAGE);
+
+                if (jcb.getSelectedItem() == null) {
+                    throw new ValidacaoException("Nenhuma impressora selecionada.");
+                }
+
+                nomeImpressoraComum = (String)jcb.getSelectedItem();
+            }
+
+            for (PrintService printService : ps) {
+                if (printService.getName().equalsIgnoreCase(nomeImpressoraComum)) {
+                    myService = printService;
+                    break;
+                }
+            }
+
+            if (myService == null) {
+                throw new ValidacaoException("Nenhuma impressora selecionada.");
+            }
+        }
+
+        return myService;
+    }
+
+    private Long buscarIdEntidade(String codEntidade){
+        String sql = "SELECT abe01id FROM abe01 WHERE abe01codigo = '" + codEntidade + "'";
+
+        TableMap tmEntidade = executarConsulta(sql)[0];
+
+        if(tmEntidade == null || tmEntidade.size() == 0) throw new ValidacaoException("Não foi encontrada a entidade com o código " + codEntidade);
+
+        return tmEntidade.getLong("abe01id");
+    }
+
     private void adicionarEventoBtnMostrar(){
         JButton btnMostrarEntRealizar = getComponente("btnMostrarEntRealizar");
         btnMostrarEntRealizar.addActionListener(new ActionListener() {
