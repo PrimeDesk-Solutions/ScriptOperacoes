@@ -137,9 +137,9 @@ public class Script extends sam.swing.ScriptBase{
                 @Override
                 void actionPerformed(ActionEvent e) {
                     verificarUnitariosQuantidadesItem();
-                    verificarEntidade(e);
-                    verificarContatosConsumidorFinal();
                     verificarCampoComprador();
+                    verificarContatosConsumidorFinal();
+                    verificarEntidade(e);
                 }
             } )
         }catch(Exception err){
