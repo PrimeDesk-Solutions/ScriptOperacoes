@@ -27,6 +27,7 @@ public class Script extends sam.swing.ScriptBase{
             MNavigation nvgAbf16codigoBaixa = getComponente("nvgAbf16codigoBaixa");
             MTextFieldLocalDate txtDataBaixa = getComponente("txtDataBaixa");
             MCheckBox chkDaa01aceite = getComponente("chkDaa01aceite");
+            MNavigation nvgAbb10codigo = getComponente("nvgAbb10codigo");
 
             tabbedPane1.addChangeListener(e ->{ // Trocando de aba
                 int index = tabbedPane1.getSelectedIndex();
@@ -44,6 +45,7 @@ public class Script extends sam.swing.ScriptBase{
                     nvgAbf20codigoBaixa.getNavigationController().setIdValue(idPLF);
                     nvgAbf15codigoBaixa.getNavigationController().setIdValue(idPortador);
                     nvgAbf16codigoBaixa.getNavigationController().setIdValue(idOperacao);
+                    nvgAbb10codigo.getNavigationController().setIdValue(38755510);
                     txtDataBaixa.setValue(LocalDate.now());
                     chkDaa01aceite.setValue(1);
                 }
