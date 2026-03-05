@@ -220,7 +220,7 @@
                 String dtBaixa = txtDaa01dtBaixa.getValue();
                 String dtPgto = txtDaa01dtPgto.getValue();
 
-                if(dtBaixa != null || dtPgto != null) interromper("Documento já pago/baixado, não é possível imprimir o boleto.")
+                //if(dtBaixa != null || dtPgto != null) interromper("Documento já pago/baixado, não é possível imprimir o boleto.")
 
                 //Verifica se existe integração bancária no documento
                 if(sprIntegracao.size() == 0){
