@@ -24,7 +24,7 @@ public class Script extends sam.swing.ScriptBase{
         MRadioButton rdoVale = getComponente("rdoVale");
         Long idEmpresa = obterEmpresaAtiva().getAac10id();
 
-        chkTipoDoc.setValue(1);
+        //chkTipoDoc.setValue(1);
         rdoCashback.setValue(0);
 
         if(idEmpresa == 1075797){
@@ -41,6 +41,6 @@ public class Script extends sam.swing.ScriptBase{
     private void verificarChkValeAoSalvar(){
         MRadioButton rdoVale = getComponente("rdoVale");
 
-        if(rdoVale.isSelected()) interromper("Para essa operação é necessário utilizar a opção 'Cashback' ou 'Dinheiro'");
+        //if(rdoVale.isSelected()) interromper("Para essa operação é necessário utilizar a opção 'Cashback' ou 'Dinheiro'");
     }
 }
