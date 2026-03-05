@@ -59,7 +59,9 @@ public class Script extends sam.swing.ScriptBase{
     public void execute(MultitecRootPanel tarefa) {
         this.panel = tarefa;
         //adicionarEventoEntidade();
-        inserirBancoDefault()
+        inserirBancoDefault();
+        adicionarEventoChkDocumento();
+        adicionarEventoChkNFE();
         adicionarEventoChkNFCe();
         adicionarEventoBtnConcluir();
     }
@@ -100,6 +102,36 @@ public class Script extends sam.swing.ScriptBase{
 
         return executarConsulta(sql)[0]
     }
+    private void adicionarEventoChkDocumento(){
+        MRadioButton rdoDocumento = getComponente("rdoDocumento");
+
+        rdoDocumento.addFocusListener(new FocusListener() {
+            @Override
+            void focusGained(FocusEvent e) {
+                alterarNumeroDeVias(2, true)
+            }
+
+            @Override
+            void focusLost(FocusEvent e) {}
+        })
+
+        //rdoNFCe65.addActionListener(e -> alterarNumeroDeVias(1, false));
+    }
+    private void adicionarEventoChkNFE(){
+        MRadioButton rdoNFe55 = getComponente("rdoNFe55");
+
+        rdoNFe55.addFocusListener(new FocusListener() {
+            @Override
+            void focusGained(FocusEvent e) {
+                alterarNumeroDeVias(2, true)
+            }
+
+            @Override
+            void focusLost(FocusEvent e) {}
+        })
+
+        //rdoNFCe65.addActionListener(e -> alterarNumeroDeVias(1, false));
+    }
     private void adicionarEventoChkNFCe(){
         MRadioButton rdoNFCe65 = getComponente("rdoNFCe65");
 
@@ -110,9 +142,7 @@ public class Script extends sam.swing.ScriptBase{
             }
 
             @Override
-            void focusLost(FocusEvent e) {
-                alterarNumeroDeVias(2, true)
-            }
+            void focusLost(FocusEvent e) {}
         })
 
         //rdoNFCe65.addActionListener(e -> alterarNumeroDeVias(1, false));
