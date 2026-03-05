@@ -73,6 +73,11 @@ import sam.swing.tarefas.srf.SRF1009;
 import br.com.multitec.utils.UiSqlColumn;
 import multitec.swing.components.textfields.MTextFieldInteger;
 import multitec.swing.components.textfields.MTextFieldString;
+import multitec.swing.core.dialogs.Messages;
+import sam.swing.core.window.PanelListarCadastro;
+import sam.swing.core.window.PanelCadastro;
+
+
 
 
 public class SRF1002 extends sam.swing.ScriptBase{
@@ -80,10 +85,12 @@ public class SRF1002 extends sam.swing.ScriptBase{
     String obs = "";
     MultitecRootPanel tarefa;
     public Runnable windowLoadOriginal;
+    PanelListarCadastro listaDoCadastro;
 
     @Override
     public void execute(MultitecRootPanel tarefa) {
         this.tarefa = tarefa;
+        listaDoCadastro = ((PanelCadastro)tarefa).panelListarCadastro.get();
         adicionarEventoTabelaPreco();
         tarefa.getWindow().getJMenuBar().getMnuArquivo().getMniCancelar().addActionListener(mnu -> this.adicionaEventoESC(mnu));
         this.windowLoadOriginal = tarefa.windowLoad ;
@@ -392,14 +399,14 @@ public class SRF1002 extends sam.swing.ScriptBase{
         Long idEmpresa = obterEmpresaAtiva().getAac10id();
 
         return executarConsulta("SELECT eaa01id "+
-                                " FROM eaa01 "+
-                                "INNER JOIN abb01 on abb01id = eaa01central "+
-                                "INNER JOIN abd01 on abd01id = eaa01pcd "+
-                                "INNER JOIN aah01 ON aah01id = abb01tipo "+
-                                "WHERE abd01es = 1 AND abd01aplic = 1 "+
-                                "AND aah01codigo = '"+ tipoDoc + "' "+
-                                "AND abb01num = "+numDoc+ " "+
-                                "AND eaa01eg = "+idEmpresa);
+                " FROM eaa01 "+
+                "INNER JOIN abb01 on abb01id = eaa01central "+
+                "INNER JOIN abd01 on abd01id = eaa01pcd "+
+                "INNER JOIN aah01 ON aah01id = abb01tipo "+
+                "WHERE abd01es = 1 AND abd01aplic = 1 "+
+                "AND aah01codigo = '"+ tipoDoc + "' "+
+                "AND abb01num = "+numDoc+ " "+
+                "AND eaa01eg = "+idEmpresa);
     }
     private abrirTelaImpressaoDocs(String codTipoDoc, Long idDocumento){
         try{
@@ -535,5 +542,14 @@ public class SRF1002 extends sam.swing.ScriptBase{
 
     @Override
     public void posSalvar(Long id) {
+        def doc = executarConsulta(" SELECT abb01num FROM Eaa01 " +
+                " INNER JOIN Abb01 ON abb01id = eaa01central " +
+                " WHERE eaa01id = " + id + " " +
+                obterWherePadrao("Eaa01"));
+
+        if(doc != null && doc.size() > 0){
+            def num = doc.get(0).getInteger("abb01num");
+            Messages.create(listaDoCadastro.getWindow()).text("Documento " + num + " salvo com sucesso.").autoCloseAfter(5000).success();
+        }
     }
 }
