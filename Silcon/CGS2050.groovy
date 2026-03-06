@@ -46,11 +46,21 @@ public class Script extends sam.swing.ScriptBase{
     }
     private void reordenarColunas(){
         MSpread sprDocsFin = getComponente("sprDocsFin");
-        sprDocsFin.getColumnIndex("daa01json.dias") != -1 ? sprDocsFin.moveColumn(sprDocsFin.getColumnIndex("daa01json.dias"), 7) : null;
-        sprDocsFin.getColumnIndex("daa01json.desconto") != -1 ? sprDocsFin.moveColumn(sprDocsFin.getColumnIndex("daa01json.desconto"), 8) : null;
-        sprDocsFin.getColumnIndex("daa01json.multa") != -1 ? sprDocsFin.moveColumn(sprDocsFin.getColumnIndex("daa01json.multa"), 9) : null;
-        sprDocsFin.getColumnIndex("daa01json.juros") != -1 ? sprDocsFin.moveColumn(sprDocsFin.getColumnIndex("daa01json.juros"), 10) : null;
-        sprDocsFin.getColumnIndex("daa01json.encargos") != -1 ? sprDocsFin.moveColumn(sprDocsFin.getColumnIndex("daa01json.encargos"), 11) : null;
+        sprDocsFin.getColumnIndex("documento") != -1 ? sprDocsFin.moveColumn(sprDocsFin.getColumnIndex("documento"), 0) : null;
+        sprDocsFin.getColumnIndex("numero") != -1 ? sprDocsFin.moveColumn(sprDocsFin.getColumnIndex("numero"), 1) : null;
+        sprDocsFin.getColumnIndex("parcela") != -1 ? sprDocsFin.moveColumn(sprDocsFin.getColumnIndex("parcela"), 2) : null;
+        sprDocsFin.getColumnIndex("serie") != -1 ? sprDocsFin.moveColumn(sprDocsFin.getColumnIndex("serie"), 3) : null;
+        sprDocsFin.getColumnIndex("vencimento") != -1 ? sprDocsFin.moveColumn(sprDocsFin.getColumnIndex("vencimento"), 4) : null;
+        sprDocsFin.getColumnIndex("daa01json.dias") != -1 ? sprDocsFin.moveColumn(sprDocsFin.getColumnIndex("daa01json.dias"), 5) : null;
+        sprDocsFin.getColumnIndex("valor") != -1 ? sprDocsFin.moveColumn(sprDocsFin.getColumnIndex("valor"), 6) : null;
+        sprDocsFin.getColumnIndex("daa01json.juros") != -1 ? sprDocsFin.moveColumn(sprDocsFin.getColumnIndex("daa01json.juros"), 7) : null;
+        sprDocsFin.getColumnIndex("data") != -1 ? sprDocsFin.moveColumn(sprDocsFin.getColumnIndex("data"), 8) : null;
+
+//        sprDocsFin.getColumnIndex("daa01json.dias") != -1 ? sprDocsFin.moveColumn(sprDocsFin.getColumnIndex("daa01json.dias"), 7) : null;
+//        sprDocsFin.getColumnIndex("daa01json.desconto") != -1 ? sprDocsFin.moveColumn(sprDocsFin.getColumnIndex("daa01json.desconto"), 8) : null;
+//        sprDocsFin.getColumnIndex("daa01json.multa") != -1 ? sprDocsFin.moveColumn(sprDocsFin.getColumnIndex("daa01json.multa"), 9) : null;
+//        sprDocsFin.getColumnIndex("daa01json.juros") != -1 ? sprDocsFin.moveColumn(sprDocsFin.getColumnIndex("daa01json.juros"), 10) : null;
+//        sprDocsFin.getColumnIndex("daa01json.encargos") != -1 ? sprDocsFin.moveColumn(sprDocsFin.getColumnIndex("daa01json.encargos"), 11) : null;
     }
     private void adicionarEventoBtnAReceber(){
         JButton btnAReceber = getComponente("btnAReceber");

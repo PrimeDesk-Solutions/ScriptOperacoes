@@ -33,19 +33,23 @@ import sam.model.entities.ea.Eaa0103;
 import sam.swing.tarefas.srf.SRF1001
 import br.com.multitec.utils.UiSqlColumn;
 import multitec.swing.components.spread.MSpread
-
 import java.awt.event.FocusEvent
 import java.awt.event.FocusListener
 import java.awt.print.PrinterJob
+import multitec.swing.core.dialogs.Messages;
+import sam.swing.core.window.PanelListarCadastro;
+import sam.swing.core.window.PanelCadastro;
 
 
 public class Script extends sam.swing.ScriptBase{
     MultitecRootPanel tarefa
     public Runnable windowLoadOriginal;
+    PanelListarCadastro listaDoCadastro;
 
     @Override
     public void execute(MultitecRootPanel tarefa) {
         this.tarefa = tarefa;
+        listaDoCadastro = ((PanelCadastro)tarefa).panelListarCadastro.get();
         adicionarEventoTabelaPreco();
         tarefa.getWindow().getJMenuBar().getMnuArquivo().getMniCancelar().addActionListener(mnu -> this.adicionaEventoESC(mnu));
         this.windowLoadOriginal = tarefa.windowLoad ;
@@ -271,5 +275,14 @@ public class Script extends sam.swing.ScriptBase{
 
     @Override
     public void posSalvar(Long id) {
+        def doc = executarConsulta(" SELECT abb01num FROM Eaa01 " +
+                " INNER JOIN Abb01 ON abb01id = eaa01central " +
+                " WHERE eaa01id = " + id + " " +
+                obterWherePadrao("Eaa01"));
+
+        if(doc != null && doc.size() > 0){
+            def num = doc.get(0).getInteger("abb01num");
+            Messages.create(listaDoCadastro.getWindow()).text("Documento " + num + " salvo com sucesso.").autoCloseAfter(5000).success();
+        }
     }
 }

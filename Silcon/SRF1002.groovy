@@ -76,6 +76,7 @@ import multitec.swing.components.textfields.MTextFieldString;
 import multitec.swing.core.dialogs.Messages;
 import sam.swing.core.window.PanelListarCadastro;
 import sam.swing.core.window.PanelCadastro;
+import javax.swing.JLabel;
 
 
 
@@ -86,6 +87,7 @@ public class SRF1002 extends sam.swing.ScriptBase{
     MultitecRootPanel tarefa;
     public Runnable windowLoadOriginal;
     PanelListarCadastro listaDoCadastro;
+    JSpinner txtVias = new JSpinner();
 
     @Override
     public void execute(MultitecRootPanel tarefa) {
@@ -98,6 +100,7 @@ public class SRF1002 extends sam.swing.ScriptBase{
         reordenarColunas();
         adicionaEventoPCD();
         adicionaBotaoImprimirDanfe();
+        criarCampoNumeroVias();
     }
     private void adicionarEventoTabelaPreco(){
         MNavigation nvgAbe40codigo = getComponente("nvgAbe40codigo");
@@ -363,6 +366,20 @@ public class SRF1002 extends sam.swing.ScriptBase{
             }
         });
     }
+    private void criarCampoNumeroVias(){
+        JPanel panel7 = getComponente("panel7");
+
+
+        JLabel labelNumVias = new JLabel();
+        labelNumVias.setText("Vias");
+        labelNumVias.setBounds(10, 105, 64, 15);
+
+        txtVias.setModel(new SpinnerNumberModel(1, 1, 9, 1));
+        txtVias.setBounds(50, 100, 45, 25);
+
+        panel7.add(labelNumVias);
+        panel7.add(txtVias);
+    }
     private void btnImprimirPressed() {
         try {
             TableMap documento = verificarDocumentoSalvo();
@@ -464,6 +481,7 @@ public class SRF1002 extends sam.swing.ScriptBase{
     }
     protected void enviarDadosParaImpressao(byte[] bytes) {
         try {
+            Integer numVias = Integer.parseInt(txtVias.getValue().toString())
             if(bytes == null || bytes.length == 0) {
                 interromper("Não foi encontrado o relatório ou parametrizações para a impressão.");
             }
@@ -479,7 +497,7 @@ public class SRF1002 extends sam.swing.ScriptBase{
                     PrinterJob job = PrinterJob.getPrinterJob();
                     job.setPageable(new PDFPageable(document));
                     job.setPrintService(myService);
-                    job.setCopies(1);
+                    job.setCopies(numVias);
                     job.setJobName("DANFE");
                     job.print();
                     document.close();
