@@ -28,11 +28,9 @@ import br.com.multitec.utils.collections.TableMap
 import multitec.swing.components.autocomplete.MNavigation
 import multitec.swing.components.textfields.MTextArea
 import multitec.swing.core.MultitecRootPanel
-
 import java.awt.event.FocusEvent
 import java.awt.event.FocusListener;
 import javax.swing.SwingUtilities
-
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -49,6 +47,7 @@ import multitec.swing.components.MRadioButton;
 import multitec.swing.request.WorkerRequest;
 import multitec.swing.request.WorkerRunnable;
 import com.fasterxml.jackson.core.type.TypeReference;
+import multitec.swing.components.MCheckBox;
 
 public class Script extends sam.swing.ScriptBase{
     public Consumer exibirRegistroPadrao;
@@ -59,11 +58,31 @@ public class Script extends sam.swing.ScriptBase{
     public void execute(MultitecRootPanel tarefa) {
         this.panel = tarefa;
         //adicionarEventoEntidade();
+        //alterarChkImpressao();
         inserirBancoDefault();
         adicionarEventoChkDocumento();
         adicionarEventoChkNFE();
         adicionarEventoChkNFCe();
-        adicionarEventoBtnConcluir();
+        //adicionarEventoBtnConcluir();
+    }
+    private void alterarChkImpressao(){
+        Long idUser = obterUsuarioLogado().getAab10id();
+        MCheckBox chkImprimir = getComponente("chkImprimir");
+        MRadioButton rdoNFCe65 = getComponente("rdoNFCe65");
+
+        //1902426 - ANDREIA
+        // 26971862 - ANDRESSA
+        // 2200978 - ARLETE
+        // 15468639 - VANESSA
+        // 1903463 - JANAINA
+        // 18353414 - ISABEL
+        // 1902688 - CASSIA
+        // 1895862 - MASTER2
+
+        if(idUser == 1902426 || idUser == 26971862 || idUser == 2200978 || idUser == 15468639 || idUser == 1903463 ||
+                idUser == 18353414 || idUser == 1902688 || idUser == 1895862){
+            if(!rdoNFCe65.isSelected()) chkImprimir.setSelected(false)
+        }
     }
     private void adicionarEventoEntidade(){
         MNavigation nvgAbe01codigo = getComponente("nvgAbe01codigo");
