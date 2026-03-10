@@ -63,7 +63,7 @@ public class Script extends sam.swing.ScriptBase{
         adicionarEventoChkDocumento();
         adicionarEventoChkNFE();
         adicionarEventoChkNFCe();
-        //adicionarEventoBtnConcluir();
+        adicionarEventoBtnConcluir();
     }
     private void alterarChkImpressao(){
         Long idUser = obterUsuarioLogado().getAab10id();
@@ -178,11 +178,11 @@ public class Script extends sam.swing.ScriptBase{
     }
     private void adicionarEventoBtnConcluir(){
         JButton btnConcluirVenda = getComponente("btnConcluirVenda");
-        actionEventOriginal = btnConcluirVenda.getActionListeners(); // Armazena os eventos default
-
-        for(evento in actionEventOriginal){
-            btnConcluirVenda.removeActionListener(evento); // Remove os evento default do botão
-        }
+//        actionEventOriginal = btnConcluirVenda.getActionListeners(); // Armazena os eventos default
+//
+//        for(evento in actionEventOriginal){
+//            btnConcluirVenda.removeActionListener(evento); // Remove os evento default do botão
+//        }
 
         btnConcluirVenda.addActionListener(new ActionListener() {
             @Override
@@ -206,13 +206,7 @@ public class Script extends sam.swing.ScriptBase{
                 if (msgEnt != null && msgEnt != "") exibirTelaDeAtencaoComMensagemEntidade(msgEnt);
 
                 // Busca os titulos vencidos da entidade
-                buscarTitulosVencidosEntidade(idEntidade, e);
-            }else{
-                if(actionEventOriginal != null && actionEventOriginal.size() > 0){
-                    for(evento in actionEventOriginal){
-                        evento.actionPerformed(e) // Executa os eventos originais novamente
-                    }
-                }
+                //buscarTitulosVencidosEntidade(idEntidade, e);
             }
         }catch(Exception err){
             interromper(err.getMessage())
