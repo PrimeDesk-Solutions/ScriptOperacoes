@@ -5,6 +5,8 @@
     3. Insere botão de impressão de documentos
     4. Exibe uma mensagem se deseja recalcular os itens ao trocar a tabela de preço
     5. Remove a coluna abm01na e altera a posição das demais colunas
+    6. Adiciona evento que reordena as colunas ao inserir o PCD
+    7. Adiciona botão de reordenar colunas
  */
 import br.com.multitec.utils.ValidacaoException
 import br.com.multitec.utils.collections.TableMap
@@ -50,13 +52,27 @@ public class Script extends sam.swing.ScriptBase{
     public void execute(MultitecRootPanel tarefa) {
         this.tarefa = tarefa;
         listaDoCadastro = ((PanelCadastro)tarefa).panelListarCadastro.get();
+        adicionarEventoPCD();
         adicionarEventoTabelaPreco();
         tarefa.getWindow().getJMenuBar().getMnuArquivo().getMniCancelar().addActionListener(mnu -> this.adicionaEventoESC(mnu));
         this.windowLoadOriginal = tarefa.windowLoad ;
         tarefa.windowLoad = {novoWindowLoad()};
         reordenarColunas();
         ocultarColunaSpread();
-        adicionaBotãoImprimirDocumento();
+        adicionaBotaoImprimirDocumento();
+        adicionarBotaoReordenarColunas();
+    }
+    private void adicionarEventoPCD(){
+        MNavigation nvgAbd01codigo = getComponente("nvgAbd01codigo");
+        nvgAbd01codigo.addFocusListener(new FocusListener() {
+            @Override
+            void focusGained(FocusEvent e) {}
+
+            @Override
+            void focusLost(FocusEvent e) {
+                if(nvgAbd01codigo.getValue() != null) reordenarColunas();
+            }
+        })
     }
     private void adicionarEventoTabelaPreco(){
         MNavigation nvgAbe40codigo = getComponente("nvgAbe40codigo");
@@ -66,7 +82,7 @@ public class Script extends sam.swing.ScriptBase{
 
             @Override
             void focusLost(FocusEvent e) {
-                recalcularItens();
+                if(nvgAbe40codigo.getValue() != null) recalcularItens();
             }
         })
     }
@@ -78,7 +94,10 @@ public class Script extends sam.swing.ScriptBase{
             JButton btnRecalcularDocumento = getComponente("btnRecalcularDocumento");
 
             for (eaa0103 in eaa0103s){
+                TableMap jsonEaa0103 = eaa0103.eaa0103json;
                 eaa0103.eaa0103unit = new BigDecimal(0);
+                jsonEaa0103.put("desconto", BigDecimal.ZERO);
+                eaa0103.setEaa0103json(jsonEaa0103);
             }
             sprEaa0103s.refreshAll();
             btnRecalcularDocumento.doClick();
@@ -117,6 +136,7 @@ public class Script extends sam.swing.ScriptBase{
     }
     private void reordenarColunas(){
         MSpread sprEaa0103s = getComponente("sprEaa0103s")
+
         sprEaa0103s.getColumnIndex("eaa0103descr") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103descr"), 3) : null;
         sprEaa0103s.getColumnIndex("eaa0103umu.aam06codigo") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103umu.aam06codigo"), 4) : null;
         sprEaa0103s.getColumnIndex("eaa0103umComl.aam06codigo") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103umComl.aam06codigo"), 5) : null;
@@ -124,27 +144,39 @@ public class Script extends sam.swing.ScriptBase{
         sprEaa0103s.getColumnIndex("eaa0103unit") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103unit"), 7) : null;
         sprEaa0103s.getColumnIndex("eaa0103total") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103total"), 8) : null;
         sprEaa0103s.getColumnIndex("eaa0103totDoc") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103totDoc"), 9) : null;
-        sprEaa0103s.getColumnIndex("eaa0103totFinanc") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103totFinanc"), 10) : null;
-        sprEaa0103s.getColumnIndex("eaa0103entrega") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103entrega"), 11) : null;
-        sprEaa0103s.getColumnIndex("eaa0103ncm.abg01codigo") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103ncm.abg01codigo"), 12) : null;
-        sprEaa0103s.getColumnIndex("eaa0103ncm.abg01descr") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103ncm.abg01descr"), 13) : null;
+        sprEaa0103s.getColumnIndex("eaa0103json.desconto") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103json.desconto"), 10) : null;
+        sprEaa0103s.getColumnIndex("eaa0103totFinanc") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103totFinanc"), 11) : null;
+        sprEaa0103s.getColumnIndex("eaa0103entrega") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103entrega"), 12) : null;
+        sprEaa0103s.getColumnIndex("eaa0103ncm.abg01codigo") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103ncm.abg01codigo"), 13) : null;
+        sprEaa0103s.getColumnIndex("eaa0103ncm.abg01descr") != -1 ? sprEaa0103s.moveColumn(sprEaa0103s.getColumnIndex("eaa0103ncm.abg01descr"), 14) : null;
     }
     private void ocultarColunaSpread(){
         MSpread sprEaa0103s = getComponente("sprEaa0103s");
         ocultarColunas(sprEaa0103s, 4)
     }
-    private void adicionaBotãoImprimirDocumento(){
+    private void adicionarBotaoReordenarColunas(){
+        JPanel panel7 = getComponente("panel7");
+
+        JButton btnReordenar = new JButton();
+        btnReordenar.setText("Reordenar Colunas")
+        btnReordenar.setBounds(0, 0, 120, 22);
+        btnReordenar.addActionListener(e -> reordenarColunas());
+
+
+        panel7.add(btnReordenar);
+
+    }
+    private void adicionaBotaoImprimirDocumento(){
         JPanel panel7 = getComponente("panel7");
 
         def btnImprimir = new JButton();
         btnImprimir.setText("Imprimir");
 
         // X    Y    W  H
-        btnImprimir.setBounds(110, 100, 160, 22);
+        btnImprimir.setBounds(110, 99, 160, 22);
+
         panel7.add(btnImprimir);
-
         panel7.setLayout(null);
-
         panel7.revalidate();
         panel7.repaint();
 
