@@ -5,6 +5,7 @@
  */
 package scripts
 
+import multitec.swing.components.spread.MSpread
 import multitec.swing.core.MultitecRootPanel
 import multitec.swing.core.utils.WindowUtils
 import sam.swing.ScriptBase
@@ -18,6 +19,7 @@ class SCF0155 extends ScriptBase{
     void execute(MultitecRootPanel panel) {
         this.tarefa = panel;
         inserirBtnAbrirTelaVincularPreVenda();
+        //alterarPosicoesSpread()
     }
 
     private void inserirBtnAbrirTelaVincularPreVenda(){
@@ -35,6 +37,14 @@ class SCF0155 extends ScriptBase{
         }catch(Exception e){
             exibirInformacao("Falha ao abrir tarefa " + e.getMessage())
         }
+    }
+    private void alterarPosicoesSpread(){
+        MSpread sprDocumentos = getComponente("sprDocumentos");
+        sprDocumentos.getColumnIndex("daa01json.jurosq") != -1 ? sprDocumentos.moveColumn(sprDocumentos.getColumnIndex("daa01json.jurosq"), 7) : null;
+        sprDocumentos.getColumnIndex("daa01json.descontoq") != -1 ? sprDocumentos.moveColumn(sprDocumentos.getColumnIndex("daa01json.descontoq"), 8) : null;
+        sprDocumentos.getColumnIndex("daa01json.multaq") != -1 ? sprDocumentos.moveColumn(sprDocumentos.getColumnIndex("daa01json.multaq"), 9) : null;
+        sprDocumentos.getColumnIndex("daa01json.encargosq") != -1 ? sprDocumentos.moveColumn(sprDocumentos.getColumnIndex("daa01json.encargosq"), 10) : null;
+        sprDocumentos.getColumnIndex("daa01json.desconto") != -1 ? sprDocumentos.moveColumn(sprDocumentos.getColumnIndex("daa01json.desconto"), 18) : null;
     }
 
     @Override
