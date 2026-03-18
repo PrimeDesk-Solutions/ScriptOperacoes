@@ -11,6 +11,7 @@
         5.2 Quando selecionado para desmarcar o check "Com Nota" é retirado o texto "COM NOTA." das observações.
     6- Ao clicar no botão concluir, é verificado se foi preenchido o campo comprador, e se consumido, não permite gravar com o texto "CONSUMIDOR"
     7- Altera a exibição da lista de itens no F4
+    8- Desabilita o campo de inserir endereço no cadastro da entidade
  */
 package scripts
 
@@ -78,6 +79,7 @@ public class Script extends sam.swing.ScriptBase{
         criarMenu("Impressão Etiqueta", "Imprimir", e -> imprimirEtiqueta(), null);
         this.windowLoadOriginal = tarefa.windowLoad ;
         tarefa.windowLoad = {novoWindowLoad()};
+        desabilitarBotaoInserirEndereco();
         adicionarEventoSpreadPreVenda()
         adicionarEventoBotaoConcluir();
         adicionarEventoBtnIniciar();
@@ -97,6 +99,10 @@ public class Script extends sam.swing.ScriptBase{
             return uiSqlColumn;
         };
 
+    }
+    private void desabilitarBotaoInserirEndereco(){
+        JButton btnIncluirNovoEnderecoEntregaEntidade = getComponente("btnIncluirNovoEnderecoEntregaEntidade");
+        btnIncluirNovoEnderecoEntregaEntidade.setEnabled(false);
     }
     private adicionarEventoSpreadPreVenda(){
         MSpread sprCcb01s = getComponente("sprCcb01s");
