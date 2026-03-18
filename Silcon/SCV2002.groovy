@@ -105,7 +105,7 @@ public class Script extends sam.swing.ScriptBase{
 
     }
     protected void adicionaEventoESC(ActionEvent evt) {
-        if(!exibirQuestao("Deseja realmente sair sem SALVAR?")) interromper("Por favor salvar antes de SAIR.");
+        if(!exibirQuestao("Deseja realmente sair?")) interromper("Por favor salvar antes de SAIR.");
     }
     protected void novoWindowLoad(){
         this.windowLoadOriginal.run();
@@ -210,7 +210,8 @@ public class Script extends sam.swing.ScriptBase{
         }
     }
     private byte[] buscarDadosImpressao(Long idDocumento, String codTipoDoc) {
-        String caminhoRelatorio = buscarCaminhoRelatorio(codTipoDoc);
+        MNavigation nvgAbd01codigo = getComponente("nvgAbd01codigo");
+        String caminhoRelatorio = nvgAbd01codigo.getValue() != "20006" ? buscarCaminhoRelatorio(codTipoDoc) : "Silcon.relatorios.srf.SRF_Impressao_Documento_Interno_S_Desc";
         String json = "{\"nome\":\""+caminhoRelatorio+"\",\"filtros\":{\"eaa01id\":"+idDocumento+"}}"
 
         ObjectMapper mapper = new ObjectMapper();

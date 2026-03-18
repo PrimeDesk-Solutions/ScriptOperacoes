@@ -130,7 +130,7 @@ public class SRF1002 extends sam.swing.ScriptBase{
 
     }
     protected void adicionaEventoESC(ActionEvent evt) {
-        if(!exibirQuestao("Deseja realmente sair sem SALVAR?")) interromper("Por favor salvar antes de SAIR.");
+        if(!exibirQuestao("Deseja realmente sair?")) interromper("Por favor salvar antes de SAIR.");
     }
     protected void novoWindowLoad(){
         this.windowLoadOriginal.run();
@@ -453,8 +453,9 @@ public class SRF1002 extends sam.swing.ScriptBase{
         }
     }
     private byte[] buscarDadosImpressao(Long idDocumento, String codTipoDoc) {
-        TableMap tmTipoDoc =  buscarInformacoesTipoDoc(codTipoDoc);
-        String caminhoRelatorio = tmTipoDoc.getString("aah01formRelDoc");
+        MNavigation nvgAbd01codigo = getComponente("nvgAbd01codigo");
+        TableMap tmTipoDoc = buscarInformacoesTipoDoc(codTipoDoc);
+        String caminhoRelatorio = nvgAbd01codigo.getValue() != "60026" ? tmTipoDoc.getString("aah01formRelDoc") : "Silcon.relatorios.srf.SRF_Impressao_Documento_Interno_S_Desc";
         if(caminhoRelatorio == null || caminhoRelatorio.isEmpty()) throw new ValidacaoException("Não foi encontrado relatório de impressão no tipo de documento " + codTipoDoc);
 
         String json = "{\"nome\":\""+caminhoRelatorio+"\",\"filtros\":{\"eaa01id\":"+idDocumento+"}}"
@@ -498,7 +499,7 @@ public class SRF1002 extends sam.swing.ScriptBase{
                     job.setPageable(new PDFPageable(document));
                     job.setPrintService(myService);
                     job.setCopies(numVias);
-                    job.setJobName("DANFE");
+                    job.setJobName("Documento");
                     job.print();
                     document.close();
                 }catch (Exception err) {
