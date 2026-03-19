@@ -112,6 +112,11 @@ public class Script extends sam.swing.ScriptBase{
             byte[] pdfBytes = buscarDadosPDF(idVenda);
             String caminhoArquivo = txtCaminho.getValue();
 
+            if (nomeEntidade != null) {
+                nomeEntidade = nomeEntidade.replaceAll("<[^>]*>", ""); // remove HTML
+                nomeEntidade = nomeEntidade.replaceAll("[\\\\/:*?\"<>|]", "_").trim();
+            }
+
             if (caminhoArquivo == null || caminhoArquivo.isEmpty())
                 throw new ValidacaoException("Necessário preencher o caminho aonde será salvo o documento.");
 
