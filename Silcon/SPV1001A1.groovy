@@ -106,7 +106,7 @@ public class Script extends sam.swing.ScriptBase{
             if (jsonCcb01 == null || jsonCcb01.size() == 0) return;
 
             Long idVenda = jsonCcb01.getLong("ccb01id");
-            Integer numVenda = jsonCcb01.getInteger("ccb01num");
+            String numVenda = jsonCcb01.getString("ccb01num").toString();
             String nomeEntidade = jsonCcb01.getString("abe01nome");
 
             byte[] pdfBytes = buscarDadosPDF(idVenda);
@@ -115,6 +115,10 @@ public class Script extends sam.swing.ScriptBase{
             if (nomeEntidade != null) {
                 nomeEntidade = nomeEntidade.replaceAll("<[^>]*>", ""); // remove HTML
                 nomeEntidade = nomeEntidade.replaceAll("[\\\\/:*?\"<>|]", "_").trim();
+            }
+
+            if (numVenda != null) {
+                numVenda = numVenda.replaceAll("<[^>]*>", ""); // remove HTML
             }
 
             if (caminhoArquivo == null || caminhoArquivo.isEmpty())
