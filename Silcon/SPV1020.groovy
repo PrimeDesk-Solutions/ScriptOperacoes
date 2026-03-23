@@ -2,6 +2,7 @@ import multitec.swing.core.MultitecRootPanel;
 import multitec.swing.components.MCheckBox;
 import multitec.swing.components.MRadioButton;
 import multitec.swing.components.autocomplete.MNavigation
+import javax.swing.JSpinner;
 
 import javax.swing.JButton;
 
@@ -11,6 +12,7 @@ public class Script extends sam.swing.ScriptBase{
     public void execute(MultitecRootPanel tarefa) {
         definirValoresDefault();
         adicionarEventoBtnGravar();
+        alterarNumeroDeVias(2);
     }
     private void adicionarEventoBtnGravar(){
         JButton btnGravar = getComponente("btnGravar");
@@ -44,5 +46,9 @@ public class Script extends sam.swing.ScriptBase{
         MRadioButton rdoDinheiro = getComponente("rdoDinheiro");
 
         if((rdoVale.isSelected() || rdoDinheiro.isSelected()) && nvgAbe01codigo.getValue() != "9999999100") interromper("Para clientes com cadastro é necessário utilizar a opção de cashback.");
+    }
+    private void alterarNumeroDeVias(Integer numVias){
+        JSpinner txtVias = getComponente("txtVias");
+        txtVias.setValue(numVias);
     }
 }
