@@ -14,10 +14,12 @@
      3. Altera o número de vias para 1 quando NFCE e inativa o campo de número de vias
      4. Remove o banco da tela quando pressionado concluir venda e tiver selecionado 'Documento' na moldura 'Venda'
      5. Exibe a mensagem (Abe02obsUsoInt) do cadastro da entidade
+     6. Altera a view de busca de entidades (F4)
 
  */
 package scripts
 
+import br.com.multitec.utils.UiSqlColumn
 import br.com.multitec.utils.ValidacaoException
 import br.com.multitec.utils.collections.TableMap
 import com.fasterxml.jackson.core.type.TypeReference
@@ -58,10 +60,13 @@ public class Script extends sam.swing.ScriptBase {
     public Consumer exibirRegistroPadrao;
     private ActionListener[] actionEventOriginal;
     MultitecRootPanel panel;
+    public Runnable windowLoadOriginal;
 
     @Override
     public void execute(MultitecRootPanel tarefa) {
         this.panel = tarefa;
+        this.windowLoadOriginal = tarefa.windowLoad;
+        tarefa.windowLoad = {novoWindowLoad()};
         //adicionarEventoEntidade();
         //alterarChkImpressao();
         inserirBancoDefault();
@@ -70,7 +75,22 @@ public class Script extends sam.swing.ScriptBase {
         adicionarEventoChkNFCe();
         adicionarEventoBtnConcluir();
     }
+    protected void novoWindowLoad(){
+        this.windowLoadOriginal.run();
 
+        def ctrAbe01 = getComponente("ctrAbe01");
+
+        ctrAbe01.f4Columns = () -> {
+            java.util.List<UiSqlColumn> uiSqlColumn = new ArrayList<>();
+            UiSqlColumn abe01codigo = new UiSqlColumn("abe01codigo", "abe01codigo", "Código", 10);
+            UiSqlColumn abe01nome = new UiSqlColumn("abe01nome", "abe01nome", "Nome", 60);
+            UiSqlColumn abe01complem = new UiSqlColumn("abe01complem", "abe01complem", "Endereço", 60);
+            UiSqlColumn abe01na = new UiSqlColumn("abe01na", "abe01na", "Nome Abreviado", 40);
+            UiSqlColumn abe01ni = new UiSqlColumn("abe01ni", "abe01ni", "Número da Inscrição", 60);
+            uiSqlColumn.addAll(Arrays.asList(abe01codigo, abe01nome, abe01complem, abe01na, abe01ni));
+            return uiSqlColumn;
+        };
+    }
     private void alterarChkImpressao() {
         Long idUser = obterUsuarioLogado().getAab10id();
         MCheckBox chkImprimir = getComponente("chkImprimir");

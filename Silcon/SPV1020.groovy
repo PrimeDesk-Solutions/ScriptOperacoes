@@ -1,3 +1,4 @@
+import br.com.multitec.utils.UiSqlColumn
 import multitec.swing.core.MultitecRootPanel;
 import multitec.swing.components.MCheckBox;
 import multitec.swing.components.MRadioButton;
@@ -8,11 +9,30 @@ import javax.swing.JButton;
 
 
 public class Script extends sam.swing.ScriptBase{
+    public Runnable windowLoadOriginal;
     @Override
     public void execute(MultitecRootPanel tarefa) {
+        this.windowLoadOriginal = tarefa.windowLoad ;
+        tarefa.windowLoad = {novoWindowLoad()};
         definirValoresDefault();
         adicionarEventoBtnGravar();
         alterarNumeroDeVias(2);
+    }
+    protected void novoWindowLoad(){
+        this.windowLoadOriginal.run();
+
+        def ctrAbe01 = getComponente("ctrAbe01");
+
+        ctrAbe01.f4Columns = () -> {
+            java.util.List<UiSqlColumn> uiSqlColumn = new ArrayList<>();
+            UiSqlColumn abe01codigo = new UiSqlColumn("abe01codigo", "abe01codigo", "Código", 10);
+            UiSqlColumn abe01nome = new UiSqlColumn("abe01nome", "abe01nome", "Nome", 60);
+            UiSqlColumn abe01complem = new UiSqlColumn("abe01complem", "abe01complem", "Endereço", 60);
+            UiSqlColumn abe01na = new UiSqlColumn("abe01na", "abe01na", "Nome Abreviado", 40);
+            UiSqlColumn abe01ni = new UiSqlColumn("abe01ni", "abe01ni", "Número da Inscrição", 60);
+            uiSqlColumn.addAll(Arrays.asList(abe01codigo, abe01nome, abe01complem, abe01na, abe01ni));
+            return uiSqlColumn;
+        };
     }
     private void adicionarEventoBtnGravar(){
         JButton btnGravar = getComponente("btnGravar");

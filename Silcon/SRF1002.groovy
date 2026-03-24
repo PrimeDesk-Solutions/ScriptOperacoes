@@ -141,10 +141,11 @@ public class SRF1002 extends sam.swing.ScriptBase{
         ctrAbb01ent.f4Columns = () -> {
             java.util.List<UiSqlColumn> uiSqlColumn = new ArrayList<>();
             UiSqlColumn abe01codigo = new UiSqlColumn("abe01codigo", "abe01codigo", "Código", 10);
-            UiSqlColumn abe01na = new UiSqlColumn("abe01na", "abe01na", "Nome Abreviado", 40);
             UiSqlColumn abe01nome = new UiSqlColumn("abe01nome", "abe01nome", "Nome", 60);
+            UiSqlColumn abe01complem = new UiSqlColumn("abe01complem", "abe01complem", "Endereço", 60);
+            UiSqlColumn abe01na = new UiSqlColumn("abe01na", "abe01na", "Nome Abreviado", 40);
             UiSqlColumn abe01ni = new UiSqlColumn("abe01ni", "abe01ni", "Número da Inscrição", 60);
-            uiSqlColumn.addAll(Arrays.asList(abe01codigo, abe01na, abe01nome, abe01ni));
+            uiSqlColumn.addAll(Arrays.asList(abe01codigo, abe01nome, abe01complem, abe01na, abe01ni));
             return uiSqlColumn;
         };
 

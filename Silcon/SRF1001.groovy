@@ -2,7 +2,11 @@
     SRF1001 - Recebimentos
     1. Altera a ordem das colunas
     2. Adiciona botão de imprimir documento
+    3. Altera a view de busca das entidades (F4)
+
  */
+
+import br.com.multitec.utils.UiSqlColumn
 import br.com.multitec.utils.ValidacaoException
 import br.com.multitec.utils.collections.TableMap
 import br.com.multitec.utils.http.HttpRequest
@@ -34,11 +38,31 @@ import java.awt.print.PrinterJob
 
 public class Script extends sam.swing.ScriptBase{
     MultitecRootPanel tarefa
+    public Runnable windowLoadOriginal;
+
     @Override
     public void execute(MultitecRootPanel tarefa) {
         this.tarefa = tarefa;
+        this.windowLoadOriginal = tarefa.windowLoad ;
+        tarefa.windowLoad = {novoWindowLoad()};
         reordenarColunas();
         adicionaBotãoImprimirDocumento();
+    }
+    protected void novoWindowLoad(){
+        this.windowLoadOriginal.run();
+
+        def ctrAbb01ent = getComponente("ctrAbb01ent");
+
+        ctrAbb01ent.f4Columns = () -> {
+            java.util.List<UiSqlColumn> uiSqlColumn = new ArrayList<>();
+            UiSqlColumn abe01codigo = new UiSqlColumn("abe01codigo", "abe01codigo", "Código", 10);
+            UiSqlColumn abe01nome = new UiSqlColumn("abe01nome", "abe01nome", "Nome", 60);
+            UiSqlColumn abe01complem = new UiSqlColumn("abe01complem", "abe01complem", "Endereço", 60);
+            UiSqlColumn abe01na = new UiSqlColumn("abe01na", "abe01na", "Nome Abreviado", 40);
+            UiSqlColumn abe01ni = new UiSqlColumn("abe01ni", "abe01ni", "Número da Inscrição", 60);
+            uiSqlColumn.addAll(Arrays.asList(abe01codigo, abe01nome, abe01complem, abe01na, abe01ni));
+            return uiSqlColumn;
+        };
     }
     private void reordenarColunas(){
         MSpread sprEaa0103s = getComponente("sprEaa0103s")
