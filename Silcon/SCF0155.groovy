@@ -2,6 +2,7 @@
     TELA: SCF0155 - CAIXA FINANCEIRO
     FUNÇÃO:
     1. Insere um botão para abrir a tela de vincular pré-venda
+    2. Altera o view de entidades (F4)
  */
 package scripts
 
@@ -10,15 +11,19 @@ import multitec.swing.core.MultitecRootPanel
 import multitec.swing.core.utils.WindowUtils
 import sam.swing.ScriptBase
 import sam.swing.tarefas.spv.SPV1050
-
+import br.com.multitec.utils.UiSqlColumn;
 import javax.swing.JButton
 
 class SCF0155 extends ScriptBase{
     MultitecRootPanel tarefa;
+    public Runnable windowLoadOriginal;
+
     @Override
     void execute(MultitecRootPanel panel) {
         this.tarefa = panel;
         inserirBtnAbrirTelaVincularPreVenda();
+        this.windowLoadOriginal = tarefa.windowLoad ;
+        tarefa.windowLoad = {novoWindowLoad()};
         //alterarPosicoesSpread()
     }
 
@@ -37,6 +42,22 @@ class SCF0155 extends ScriptBase{
         }catch(Exception e){
             exibirInformacao("Falha ao abrir tarefa " + e.getMessage())
         }
+    }
+    protected void novoWindowLoad() {
+        this.windowLoadOriginal.run();
+
+        def ctrAbe01 = getComponente("ctrAbe01");
+
+        ctrAbe01.f4Columns = () -> {
+            java.util.List<UiSqlColumn> uiSqlColumn = new ArrayList<>();
+            UiSqlColumn abe01codigo = new UiSqlColumn("abe01codigo", "abe01codigo", "Código", 10);
+            UiSqlColumn abe01nome = new UiSqlColumn("abe01nome", "abe01nome", "Nome", 60);
+            UiSqlColumn abe01complem = new UiSqlColumn("abe01complem", "abe01complem", "Endereço", 60);
+            UiSqlColumn abe01na = new UiSqlColumn("abe01na", "abe01na", "Nome Abreviado", 40);
+            UiSqlColumn abe01ni = new UiSqlColumn("abe01ni", "abe01ni", "Número da Inscrição", 60);
+            uiSqlColumn.addAll(Arrays.asList(abe01codigo, abe01nome, abe01complem, abe01na, abe01ni));
+            return uiSqlColumn;
+        };
     }
     private void alterarPosicoesSpread(){
         MSpread sprDocumentos = getComponente("sprDocumentos");
