@@ -2,8 +2,9 @@
         TELA: SCF0101 - RECEBIMENTOS
         FUNCÃO:
 
-        1- Cria um botão customizado na tela do financeiro para imprimir os boletos individualmente
-        2- Verifica se foi inserido departamento e naturezas antes de salvar o documento
+        1. Cria um botão customizado na tela do financeiro para imprimir os boletos individualmente
+        2. Verifica se foi inserido departamento e naturezas antes de salvar o documento
+        3. Bloqueia alteração em documentos com data retroativa
      */
     package scripts
 
@@ -61,14 +62,25 @@
         public void preSalvar(boolean salvo) {
             // Verifica se foi informado departamento ou natureza no documento
             verificarDepartamentosNaturezas();
+            verificaAlteracaoDocumento();
         }
 
         @Override
         public void execute(MultitecRootPanel tarefa) {
             this.tarefa = tarefa;
+            MTextFieldLocalDate txtDaa01dtLcto = getComponente("txtDaa01dtLcto");
+            txtDaa01dtLcto.setEnabled(false);
             adicionaBotaoImprimirDoc();
             adicionarBotaoEstornarDocumento();
             criarMenu("Customizado", "Estornar Documento", e -> estornarDocumento(), null);
+        }
+
+        private void verificaAlteracaoDocumento(){
+            MTextFieldLocalDate txtDaa01dtLcto = getComponente("txtDaa01dtLcto");
+            TableMap camposCustomUser = executarConsulta("SELECT aab10camposCustom as camposcustom FROM aab10 WHERE aab10id = " + obterUsuarioLogado().getAab10id())[0];
+            if(camposCustomUser == null || camposCustomUser.getTableMap("camposcustom").getInteger("permite_alteracao_retro") != 1) interromper("O usuário logado não tem permissão para alterar/salvar esse registro");
+            Integer permiteAlteracao = camposCustomUser.getTableMap("camposcustom").getInteger("permite_alteracao_retro");
+            if(permiteAlteracao == 0 && txtDaa01dtLcto.getValue() < LocalDate.now()) interromper("O usuário logado não tem permissão para alterar/gravar documentos com data retroativa.")
         }
 
         private void verificarDepartamentosNaturezas(){
