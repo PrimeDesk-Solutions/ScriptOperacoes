@@ -62,7 +62,7 @@
         public void preSalvar(boolean salvo) {
             // Verifica se foi informado departamento ou natureza no documento
             verificarDepartamentosNaturezas();
-            verificaAlteracaoDocumento();
+            //verificaAlteracaoDocumento();
         }
 
         @Override
