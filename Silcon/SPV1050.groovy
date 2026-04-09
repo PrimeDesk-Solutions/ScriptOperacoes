@@ -7,6 +7,7 @@
 
 
 import br.com.multitec.utils.UiSqlColumn
+import multitec.swing.components.MCheckBox
 import multitec.swing.components.autocomplete.MNavigation
 import multitec.swing.core.MultitecRootPanel;
 
@@ -38,6 +39,7 @@ public class Script extends sam.swing.ScriptBase{
         MNavigation nvgAah01codigo = getComponente("nvgAah01codigo");
         MNavigation nvgCca01codigo = getComponente("nvgCca01codigo");
         Long idEmpresa = obterEmpresaAtiva().getAac10id();
+        MCheckBox chkConsiderarSomenteDocsVendaComFinAbertos = getComponente("chkConsiderarSomenteDocsVendaComFinAbertos");
 
         if(idEmpresa == 1075797) { // MATRIZ
             nvgAah01codigo.getNavigationController().setIdValue(584524);
@@ -46,5 +48,7 @@ public class Script extends sam.swing.ScriptBase{
             nvgAah01codigo.getNavigationController().setIdValue(36248030);
             nvgCca01codigo.getNavigationController().setIdValue(35615205);
         }
+
+        chkConsiderarSomenteDocsVendaComFinAbertos.setValue(1)
     }
 }
