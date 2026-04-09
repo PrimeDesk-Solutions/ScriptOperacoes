@@ -91,6 +91,7 @@ public class SRF1002 extends sam.swing.ScriptBase{
 
     @Override
     public void execute(MultitecRootPanel tarefa) {
+        JButton btnIncluirNovoEnderecoEntregaEntidade = getComponente("btnIncluirNovoEnderecoEntregaEntidade");
         this.tarefa = tarefa;
         listaDoCadastro = ((PanelCadastro)tarefa).panelListarCadastro.get();
         adicionarEventoTabelaPreco();
@@ -101,6 +102,13 @@ public class SRF1002 extends sam.swing.ScriptBase{
         adicionaEventoPCD();
         adicionaBotaoImprimirDanfe();
         criarCampoNumeroVias();
+        desativarBotaoIncluirEndereco(btnIncluirNovoEnderecoEntregaEntidade);
+    }
+    private void desativarBotaoIncluirEndereco(JButton btn){
+        desativarBotoes(btn)
+    }
+    private void desativarBotoes(JButton btn){
+        btn.setEnabled(false);
     }
     private void adicionarEventoTabelaPreco(){
         MNavigation nvgAbe40codigo = getComponente("nvgAbe40codigo");

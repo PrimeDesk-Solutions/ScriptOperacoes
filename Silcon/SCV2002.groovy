@@ -50,6 +50,7 @@ public class Script extends sam.swing.ScriptBase{
 
     @Override
     public void execute(MultitecRootPanel tarefa) {
+        JButton btnIncluirNovoEnderecoEntregaEntidade = getComponente("btnIncluirNovoEnderecoEntregaEntidade");
         this.tarefa = tarefa;
         listaDoCadastro = ((PanelCadastro)tarefa).panelListarCadastro.get();
         adicionarEventoPCD();
@@ -61,6 +62,13 @@ public class Script extends sam.swing.ScriptBase{
         ocultarColunaSpread();
         adicionaBotaoImprimirDocumento();
         adicionarBotaoReordenarColunas();
+        desativarBotaoIncluirEndereco(btnIncluirNovoEnderecoEntregaEntidade);
+    }
+    private void desativarBotaoIncluirEndereco(JButton btn){
+        desativarBotoes(btn)
+    }
+    private void desativarBotoes(JButton btn){
+        btn.setEnabled(false);
     }
     private void adicionarEventoPCD(){
         MNavigation nvgAbd01codigo = getComponente("nvgAbd01codigo");
